@@ -1,57 +1,234 @@
-* {
-  box-sizing: border-box;
+/* Kinetic Print — warm paper controls, ink arena, one acid-green action accent.
+   Sections: foundation / layout / arena / controls / overlays / responsive. */
+:root {
+  color-scheme:light;
+  --bg:#eee9da; --panel:#f7f3e8; --surface:#e6e3d6; --line:#c1c4b2;
+  --text:#172924; --muted:#546258; --accent:#d1eb72;
+  --ink:#172924; --paper:#eee9da; --blue:#70d9ec; --red:#ff927e;
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  font-synthesis:none;
 }
-
-body {
-  margin: 0;
-  min-height: 100vh;
-  background: #151824;
-  color: #f5f7ff;
-  font-family: system-ui, sans-serif;
-  display: grid;
-  place-items: center;
+* {box-sizing:border-box}
+body {margin:0;min-height:100vh;background:var(--bg);color:var(--text)}
+button,select,input {font:inherit}
+button,select,input[type=number] {border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:3px;min-height:35px}
+button {padding:7px 11px;font-weight:650;cursor:pointer;transition:background .12s,border-color .12s}
+button:hover {background:var(--surface);border-color:var(--text)}
+button:active {transform:translateY(1px)}
+button:disabled {opacity:.5;cursor:not-allowed}
+button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visible,a:focus-visible {outline:2px solid var(--text);outline-offset:3px}
+canvas:focus-visible {outline:2px solid var(--accent);outline-offset:-3px}
+select {width:100%;padding:6px 23px 6px 9px;cursor:pointer}
+input[type=number] {width:100%;padding:6px 9px}
+input[type=checkbox] {accent-color:var(--text);width:16px;height:16px;margin:0;flex:0 0 auto}
+input[type=range] {width:100%;accent-color:var(--text);margin:10px 0 0}
+a {color:inherit;text-decoration:none}
+strong,b {font-weight:700}
+h1,h2,p {margin:0}
+kbd {display:inline-block;border:1px solid #a2aa98;border-bottom-width:2px;padding:0 4px;border-radius:3px;font:10px ui-monospace,SFMono-Regular,Consolas,monospace;color:inherit;line-height:18px;vertical-align:middle}
+button kbd {margin-left:3px}
+[hidden] {display:none!important}
+.sr-only {position:absolute!important;width:1px;height:1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+/* A compact printed folio rather than floating dashboard cards. */
+.app {width:min(1490px,100%);padding:22px 28px 16px;margin:auto}
+.topbar {display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px;border-bottom:2px solid var(--text);padding-bottom:16px}
+.wordmark {display:flex;align-items:center;gap:10px;font-size:35px;font-weight:950;letter-spacing:-1.9px;font-style:italic;line-height:1}
+.mark {display:grid;place-items:center;background:var(--ink);color:var(--accent);width:36px;height:37px;clip-path:polygon(12% 0,100% 0,88% 100%,0 100%);font-size:31px;font-style:normal}
+.edition {font:10px ui-monospace,monospace;font-weight:600;letter-spacing:1.3px;border-left:1px solid var(--line);padding-left:15px;margin-left:8px;color:var(--muted)}
+.edition b {display:inline-block;padding:5px;border:1px solid var(--text);color:var(--text);margin-left:6px;letter-spacing:0}
+.header-actions {display:flex;gap:6px;align-items:center;font-size:12px}
+button.quiet {border-color:transparent;background:none}
+button.quiet:hover {background:var(--surface)}
+.local-badge {font:9px ui-monospace,monospace;letter-spacing:.8px;color:var(--muted);margin-right:12px}
+.local-badge i,.live-dot {display:inline-block;background:currentColor;width:5px;height:5px;border-radius:50%;margin-right:6px}
+.workspace {display:grid;grid-template-columns:minmax(0,1fr) 292px;gap:18px;align-items:start}
+.arena-panel {border:1px solid var(--ink);background:var(--ink);color:var(--paper);min-width:0;position:sticky;top:12px;overflow:hidden;border-radius:4px}
+.arena-panel button {color:var(--paper);background:transparent;border-color:#667469}
+.arena-panel button:hover {background:#35483b;border-color:var(--paper)}
+.arena-panel button:focus-visible {outline-color:var(--accent)}
+.arena-bar {height:42px;display:flex;justify-content:space-between;align-items:center;padding:0 17px;border-bottom:1px solid #6877606b;color:#cad1b9;font:10px ui-monospace,monospace;letter-spacing:1px}
+.arena-bar strong {color:var(--accent)}
+.separator {opacity:.5;padding:0 10px}
+.arena-tools {display:flex;gap:9px;align-items:center}
+#clockLabel {font-size:15px;color:var(--paper);letter-spacing:1px;font-variant-numeric:tabular-nums;margin-right:8px}
+.icon-button {border:0!important;font-size:20px;min-height:28px;padding:0 4px}
+.viewport {position:relative;aspect-ratio:16/9;background:var(--ink);overflow:hidden}
+canvas {display:block;width:100%;height:100%;touch-action:none}
+.arena-caption {position:absolute;bottom:12px;left:20px;right:20px;display:flex;justify-content:space-between;gap:12px;font:8px ui-monospace,monospace;letter-spacing:1px;color:#b8c2a6;pointer-events:none}
+.scoreboard {display:grid;grid-template-columns:minmax(0,1fr) 35px minmax(0,1fr);align-items:center;padding:0 18px;border-top:1px solid #8495716b;background:#12251f}
+.fighter-card {display:flex;align-items:center;gap:13px;position:relative;min-width:0;padding:16px 0 17px}
+.blue {color:var(--blue)} .red {color:var(--red)}
+.fighter-identity {display:flex;gap:10px;align-items:center}
+.player-id {font:12px ui-monospace,monospace;font-weight:bold;position:relative;width:29px;height:29px;display:grid;place-items:center}
+.player-id::before {content:"";position:absolute;inset:0;border:1px solid currentColor;border-radius:50%}
+.blue .player-id::before {border-radius:0;transform:rotate(45deg);inset:3px}
+.fighter-identity strong {display:block;font-size:13px;letter-spacing:1px}
+.fighter-identity div>span {display:block;font:9px ui-monospace,monospace;letter-spacing:.8px;margin-top:5px;color:#b7c2ae}
+.fighter-stats {margin-left:auto;min-width:0}
+.stocks {display:flex;gap:6px;min-height:7px;margin-bottom:8px;flex-wrap:wrap;max-width:102px}
+.stock {width:6px;height:6px;background:currentColor;display:inline-block;border-radius:50%}
+.blue .stock {border-radius:0;transform:rotate(45deg)}
+.stock.lost {background:transparent;border:1px solid currentColor;opacity:.45}
+.state {display:block;font:8px ui-monospace,monospace;color:#b7c2ae;text-transform:uppercase;white-space:nowrap;max-width:96px;overflow:hidden;text-overflow:ellipsis}
+.percent {color:var(--paper);font-size:37px;font-weight:800;letter-spacing:-1.6px;line-height:1;min-width:61px;text-align:right;font-variant-numeric:tabular-nums}
+.percent span {font-size:16px;letter-spacing:0;margin-left:1px;color:#c0c6af}
+.score-divider {text-align:center;font:10px ui-monospace,monospace;color:#a1af97}
+.shield-track {position:absolute;left:0;bottom:0;right:0;height:3px;background:#425342}
+.shield-track>div {height:100%;background:currentColor;transition:width .08s}
+.bottom-bar {display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:40px;padding:6px 17px;color:#c1c8b5;font-size:10px}
+#inputStatus {font:8px ui-monospace,monospace;letter-spacing:.7px}
+.arena-panel .text-button {color:var(--accent);border:0;font-size:11px;padding:3px 0;min-height:26px}
+/* Settings are short, literal, and keep match changes separate from view changes. */
+.sidebar {display:grid;gap:12px}
+.panel {background:var(--panel);border:1px solid var(--line);border-radius:3px;padding:15px}
+.section-heading {display:flex;justify-content:space-between;align-items:center;gap:9px;margin-bottom:12px}
+.section-heading h2 {font-size:16px;font-weight:800;letter-spacing:-.3px}
+.micro {font:9px ui-monospace,monospace;color:var(--muted);letter-spacing:.6px}
+.section-heading .micro {font-size:8px}
+.rule-tabs {display:flex;border:1px solid var(--line);padding:3px;gap:3px;border-radius:3px;background:var(--surface)}
+.rule-tabs button {flex:1;min-height:30px;font-size:12px;padding:5px 0;border:0;background:transparent}
+.rule-tabs button.active {background:var(--ink);color:var(--accent)}
+.panel-copy {font-size:12px;line-height:1.55;color:var(--muted);margin:10px 0 12px}
+.panel-copy.small {font-size:11px;margin-bottom:0}
+.form-grid {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:9px}
+.form-grid label {display:flex;flex-direction:column;gap:6px;font-size:11px;color:var(--muted)}
+.form-grid select,.form-grid input {font-size:12px;min-width:0}
+.note {font-size:10px;letter-spacing:0;line-height:1.45;margin-top:9px;color:var(--muted)}
+summary {list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;font-weight:650}
+summary::-webkit-details-marker {display:none}
+summary>span:last-child {font-size:13px}
+.settings-panel details {margin-top:12px;border-top:1px solid var(--line);padding-top:11px}
+details[open] .details-content {margin-top:12px}
+.details-content .form-grid {margin-top:12px}
+.check {display:flex;align-items:center;gap:8px;font-size:12px;line-height:1.45;cursor:pointer}
+.check+.check {margin-top:10px}
+.check>span {margin-left:auto;color:var(--muted)}
+.lab-tools {display:flex;align-items:center;justify-content:space-between;gap:10px}
+.speed-label {display:flex;align-items:center;gap:7px;font-size:11px;color:var(--muted)}
+.speed-label select {width:60px;font-size:12px;min-height:31px}
+.telemetry {display:grid;grid-template-columns:1fr 1fr;gap:12px 6px;padding:12px 0;border-block:1px solid var(--line);margin-top:12px}
+.telemetry div {display:flex;flex-direction:column;gap:5px}
+.telemetry span {font:8px ui-monospace,monospace;color:var(--muted);letter-spacing:.7px}
+.telemetry strong {font:11px ui-monospace,monospace;white-space:nowrap;font-variant-numeric:tabular-nums}
+.training-only {margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+.range-label {display:flex;flex-wrap:wrap;justify-content:space-between;font-size:11px;color:var(--muted)}
+.range-label output {font-weight:700;color:var(--text)}
+.button-row {display:flex;gap:6px;margin-top:10px}
+.button-row button {flex:1;font-size:11px;padding:5px}
+.reactions {font:11px ui-monospace,monospace;display:grid;gap:11px;margin-top:14px}
+.reactions b {float:right;font-weight:500}
+.fire {color:#953a20} .water {color:#176778} .spark {color:#70540b}
+.wide {width:100%;font-size:12px;margin-top:12px}
+.move-command {display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
+#moveCommand {font-size:10px}
+#moveTiming {font:9px ui-monospace,monospace;color:var(--muted)}
+#demoMoveBtn {background:var(--accent);border-color:#a4b965;color:var(--ink)}
+#demoMoveBtn:hover {background:#e0f79c}
+.view-panel,.controls-panel {padding:12px 15px}
+.view-panel .form-grid {grid-template-columns:1fr}
+.view-panel .details-content>label {margin-top:11px}
+.cue-legend {display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px;font:9px ui-monospace,monospace;color:var(--muted)}
+.cue-legend i {display:block;width:34px;height:4px;margin-bottom:6px}
+.cue-windup {border:1px solid var(--text)} .cue-active {background:var(--text)} .cue-recovery {border-top:2px dotted var(--text)}
+.material-key {display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;font:10px ui-monospace,monospace;color:var(--muted)}
+.material-key span {border:1px solid var(--line);padding:4px 5px}
+.control-heading {font:10px ui-monospace,monospace;letter-spacing:.6px;font-weight:bold;margin:15px 0 9px}
+.control-heading:first-child {margin-top:0}
+.blue-text {color:#176778} .red-text {color:#953a20}
+.control-list {display:grid;grid-template-columns:77px 1fr;gap:9px 5px;font-size:11px;margin:0}
+.control-list dt {font:11px ui-monospace,monospace;font-weight:600}
+.control-list dd {margin:0;line-height:1.45;color:var(--muted)}
+.app-footer {display:flex;justify-content:space-between;align-items:center;gap:12px;border-top:1px solid var(--line);padding-top:12px;margin-top:17px;color:var(--muted);font:9px ui-monospace,monospace;letter-spacing:.8px;line-height:1.5}
+.app-footer span:last-child {font-family:inherit;font-size:10px;letter-spacing:0}
+/* The opening card is a printed label in the landscape, not a full-screen blur. */
+.overlay {position:absolute;inset:0;display:flex;justify-content:flex-start;align-items:center;padding:28px 6%;background:#101f1820;z-index:3}
+.intro-card {width:430px;max-width:65%;padding:24px 26px;background:var(--paper);color:var(--ink);border:1px solid var(--ink);box-shadow:6px 6px 0 #0c1c1480;position:relative}
+.intro-card::before {content:"";position:absolute;left:-1px;top:-1px;height:7px;width:45%;background:var(--accent);border:1px solid var(--ink)}
+.eyebrow {display:block;font:8px ui-monospace,monospace;letter-spacing:1.1px;color:var(--muted);margin-bottom:14px}
+.intro-card h1 {font-family:"Arial Black",ui-sans-serif,system-ui,sans-serif;font-size:clamp(32px,4vw,61px);font-weight:950;letter-spacing:-2.5px;line-height:.93}
+.intro-card h1 em {font-style:italic}
+.intro-card>p:not(.intro-hint) {font-size:12px;line-height:1.6;color:var(--muted);margin-top:15px}
+.start-actions {display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:17px}
+.arena-panel .start-actions button {color:var(--ink);background:var(--panel);border-color:#a2ae97;font-size:11px;min-height:35px;padding:7px 8px}
+.arena-panel .start-actions button:hover {background:var(--surface)}
+.arena-panel .start-actions button.primary {grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;background:var(--ink);color:var(--accent);border-color:var(--ink);padding:7px 12px;font-size:13px;min-height:39px}
+.arena-panel .start-actions button:focus-visible {outline-color:var(--ink)}
+.primary span {font-size:23px}
+.intro-hint {font-size:9px;line-height:2;color:var(--muted);margin-top:13px}
+.intro-hint kbd {font-size:8px;line-height:15px;margin-right:3px}
+.feedback {position:absolute;left:50%;top:16%;transform:translateX(-50%);border:1px solid #a8b58e;background:var(--ink);color:var(--accent);padding:7px 11px;font:10px ui-monospace,monospace;letter-spacing:.7px;opacity:0;pointer-events:none;white-space:nowrap;transition:opacity .12s}
+.feedback.visible {opacity:1}
+.frame-guide {position:absolute;top:15px;left:50%;transform:translateX(-50%);width:205px;text-align:center;pointer-events:none;background:#172924de;padding:6px 8px;color:var(--paper)}
+#attackReadout {font:9px ui-monospace,monospace;letter-spacing:.4px}
+.phase-meter {display:flex;position:relative;height:5px;margin-top:7px;gap:2px}
+.phase-meter .startup {border:1px solid var(--paper)} .phase-meter .active {background:var(--accent)} .phase-meter .recovery {border-top:2px dotted #bdc5ad;align-self:center;height:1px}
+.phase-meter i {position:absolute;top:-2px;height:9px;width:2px;background:var(--paper)}
+.touch-controls {display:none;padding:10px;border-top:1px solid #63795e;gap:9px}
+.touch-group {display:flex;flex-wrap:wrap;gap:6px}
+.touch-controls button {min-height:44px;min-width:40px;font-size:11px;flex:1;touch-action:none;user-select:none;-webkit-user-select:none}
+.touch-controls button.held {background:#425c3a;border-color:var(--accent)}
+.error {padding:20px;color:#953a20}
+/* Fullscreen letterboxes the canvas: never squash the ground plane. */
+.arena-panel:fullscreen {width:100vw;height:100dvh;border:0;border-radius:0;display:flex;flex-direction:column;justify-content:center;align-items:stretch;overflow:auto}
+.arena-panel:fullscreen .viewport {width:min(100%,calc((100dvh - 200px)*16/9));align-self:center;flex:none}
+.arena-panel:fullscreen .arena-bar {flex:none}
+.arena-panel:fullscreen .scoreboard {padding-inline:5%;flex:none}
+.arena-panel:fullscreen .bottom-bar {flex:none}
+@media(max-width:1120px) {
+  .app {padding:16px} .workspace {grid-template-columns:minmax(0,1fr) 270px;gap:13px}
+  .edition {font-size:9px;letter-spacing:.6px} .local-badge {display:none}
+  .panel {padding:13px} .section-heading h2 {font-size:15px}
+  .fighter-card {gap:9px} .player-id {display:none} .fighter-identity {gap:5px}
+  .percent {font-size:31px;min-width:49px} #inputStatus {display:none}
+  .intro-card {padding:17px 20px;max-width:66%} .intro-card h1 {font-size:45px}
+  .intro-card>p:not(.intro-hint) {font-size:11px;margin-top:11px} .start-actions {margin-top:13px}
+  .eyebrow {font-size:7px;letter-spacing:.6px;margin-bottom:11px}
+  .arena-caption {font-size:7px;letter-spacing:.6px}
 }
-
-main {
-  width: min(100vw, 1040px);
-  padding: 20px;
+@media(max-width:800px) {
+  .app {padding:12px} .workspace {grid-template-columns:1fr} .arena-panel {position:relative;top:0}
+  .sidebar {grid-template-columns:1fr 1fr;gap:12px;align-items:start}
+  .chemistry-panel,.view-panel,.controls-panel {grid-column:1/-1}
+  .topbar {margin-bottom:13px;padding-bottom:13px} .wordmark {font-size:29px;gap:7px}
+  .mark {height:31px;width:31px} .header-actions {gap:2px} .header-actions button {font-size:11px;padding:5px}
+  .edition {font-size:8px;padding-left:10px;margin-left:3px}
+  .touch-controls {display:flex;flex-direction:column}
+  .intro-card {max-width:62%;width:400px} .intro-card h1 {font-size:44px}
+  .player-id {display:grid}
+  .arena-panel:fullscreen .viewport {width:min(100%,calc((100dvh - 300px)*16/9))}
 }
-
-h1 {
-  margin: 0 0 14px;
-  font-size: 28px;
+@media(max-width:540px) {
+  .app {padding:9px} .edition {display:none} .wordmark {font-size:27px}
+  .header-actions button {font-size:11px} .header-actions kbd {display:none}
+  .arena-bar {height:35px;padding:0 10px;font-size:9px} .arena-tools {gap:5px} #clockLabel {font-size:12px}
+  .overlay {padding:8px 5%} .intro-card {width:100%;max-width:100%;padding:11px 15px;box-shadow:3px 3px 0 #0c1c1480}
+  .intro-card h1 {font-size:28px;letter-spacing:-1px;line-height:1} .intro-card h1 br {display:none}
+  .intro-card h1 em::before {content:" "} .eyebrow {font-size:6px;margin-bottom:8px}
+  .intro-card>p:not(.intro-hint) {font-size:10px;margin-top:6px;line-height:1.4}
+  .start-actions {grid-template-columns:1.2fr 1fr 1fr;margin-top:10px;gap:5px}
+  .arena-panel .start-actions button {font-size:9px;min-height:31px;padding:4px}
+  .arena-panel .start-actions button.primary {grid-column:auto;font-size:10px;min-height:31px;padding:4px 6px;justify-content:center}
+  .primary span {display:none} .intro-hint {margin-top:7px;font-size:8px} .intro-hint kbd {font-size:7px;line-height:12px}
+  .arena-caption {font-size:6px;left:10px;right:10px;bottom:6px}
+  .scoreboard {padding-inline:11px;grid-template-columns:minmax(0,1fr) 23px minmax(0,1fr)}
+  .fighter-card {gap:6px;padding:12px 0 14px} .player-id {display:none}
+  .fighter-identity strong {font-size:10px;letter-spacing:.3px} .fighter-identity div>span {font-size:7px}
+  .percent {font-size:27px;min-width:38px;letter-spacing:-1px} .percent span {font-size:12px}
+  .state {font-size:7px;max-width:45px} .stocks {gap:5px} .stock {width:5px;height:5px}
+  .bottom-bar {padding:6px 10px;min-height:37px;font-size:8px} .bottom-bar kbd {font-size:8px;line-height:14px}
+  .bottom-bar .separator {padding-inline:3px} .bottom-bar .text-button {font-size:10px}
+  .sidebar {grid-template-columns:1fr} .panel {padding:14px} .section-heading h2 {font-size:16px}
+  .app-footer {flex-direction:column;align-items:start;gap:5px;font-size:8px}
+  .feedback {font-size:8px;padding:5px 8px;top:27%} .frame-guide {top:4px;max-width:175px;padding:4px}
+  #attackReadout {font-size:7px} .touch-controls {padding:9px;gap:7px} .touch-controls button {font-size:10px;min-width:37px}
 }
-
-canvas {
-  width: 100%;
-  max-width: 960px;
-  aspect-ratio: 16 / 9;
-  display: block;
-  background: linear-gradient(#202940, #11141f);
-  border: 2px solid #39415f;
-  border-radius: 14px;
+@media(pointer:coarse) { .touch-controls {display:flex;flex-direction:column} }
+@media(max-height:600px) and (orientation:landscape) {
+  .arena-panel:fullscreen .viewport {width:min(100%,calc((100dvh - 158px)*16/9))}
+  .arena-panel:fullscreen .touch-controls {position:absolute;bottom:8px;left:0;right:0;pointer-events:none;border:0;justify-content:space-between;flex-direction:row}
+  .arena-panel:fullscreen .touch-controls button {pointer-events:auto;background:#172924ef}
+  .arena-panel:fullscreen .touch-group {max-width:30%}
 }
-
-.hud {
-  margin-top: 14px;
-  display: flex;
-  gap: 16px;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  color: #cbd3f7;
-}
-
-button {
-  background: #6d7cff;
-  color: white;
-  border: 0;
-  padding: 10px 16px;
-  border-radius: 10px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-button:hover {
-  background: #8793ff;
-}
+html[data-motion=reduced] * {transition:none!important;scroll-behavior:auto!important}
+html[data-motion=reduced] button:active {transform:none}
+@media(prefers-reduced-motion:reduce) { * {scroll-behavior:auto!important} }
