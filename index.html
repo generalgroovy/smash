@@ -3,20 +3,21 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#101820">
+  <meta name="theme-color" content="#eee9da">
   <meta name="description" content="A fast, local platform-fighter movement lab. Learn the fundamentals, carry your momentum, then experiment with elemental reactions.">
   <title>SMASH — Movement Lab</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%237fe4c0' d='M38 3 9 37h21l-4 24 29-36H34z'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="style.css">
   <script src="engine.js" defer></script>
   <script src="animation.js" defer></script>
+  <script src="visual.js" defer></script>
   <script src="game.js" defer></script>
 </head>
 <body>
 <main class="app">
   <header class="topbar">
-    <a class="wordmark" href="./" aria-label="SMASH Movement Lab home"><span class="mark">↯</span> SMASH <span class="edition">MOVEMENT LAB <b>03</b></span></a>
-    <div class="header-actions"><span class="local-badge"><i></i> LOCAL · NO DOWNLOADS</span><button id="soundBtn" class="quiet" aria-pressed="false">Sound off</button><button id="helpBtn" class="quiet" aria-expanded="false" aria-controls="controlsHelp">Controls <kbd>?</kbd></button></div>
+    <a class="wordmark" href="./" aria-label="SMASH Movement Lab home"><span class="mark">↯</span> SMASH <span class="edition">MOVEMENT LAB <b>04</b></span></a>
+    <div class="header-actions"><span class="local-badge"><i></i> LOCAL / OFFLINE READY</span><button id="soundBtn" class="quiet" aria-pressed="false">Sound off</button><button id="helpBtn" class="quiet" aria-expanded="false" aria-controls="controlsHelp">Controls <kbd>?</kbd></button></div>
   </header>
   <div class="workspace">
     <section class="arena-panel" id="arenaPanel" aria-label="Game arena">
@@ -27,8 +28,8 @@
         <div id="feedback" class="feedback" aria-live="polite"></div>
         <div id="overlay" class="overlay">
           <div class="intro-card">
-            <span id="overlayEyebrow" class="eyebrow">A PLATFORM FIGHTER. A MOVEMENT PLAYGROUND.</span>
-            <h1 id="overlayTitle">Own the space.</h1>
+            <span id="overlayEyebrow" class="eyebrow">PRECISION FIRST. EXPERIMENTS OPTIONAL.</span>
+            <h1 id="overlayTitle">Own the<br><em>space.</em></h1>
             <p id="overlayCopy">Build momentum. Find an opening.<br>Send your rival beyond the edge.</p>
             <div class="start-actions"><button class="primary" id="startBtn">Play vs CPU <span>↗</span></button><button id="localBtn">Two players</button><button id="trainingBtn">Training lab</button></div>
             <p class="intro-hint"><kbd>A</kbd><kbd>D</kbd> move <kbd>Space</kbd> jump <kbd>F</kbd> hit <kbd>G</kbd> shield</p>
@@ -49,19 +50,19 @@
     </section>
     <aside class="sidebar" aria-label="Match settings and training tools">
       <section class="panel settings-panel">
-        <div class="section-heading"><h2>Make it your match</h2><span class="micro">01 — RULES</span></div>
+        <div class="section-heading"><h2>Match</h2><span class="micro">01 / SETUP</span></div>
         <div class="rule-tabs" role="group" aria-label="Ruleset"><button data-rules="duel" class="active" aria-pressed="true">Duel</button><button data-rules="flow" aria-pressed="false">Flow</button><button data-rules="alchemy" aria-pressed="false">Alchemy</button></div>
         <p id="rulesDescription" class="panel-copy">The fundamentals. Fast movement, deliberate attacks, no stage hazards.</p>
         <div class="form-grid"><label>Opponent<select id="opponent"><option value="cpu">CPU rival</option><option value="local">Local player 2</option><option value="training">Training dummy</option></select></label><label>Stage<select id="stage"><option value="triad">Triad</option><option value="flat">Flatline</option></select></label></div>
         <p class="micro note">Changing match settings restarts the round.</p>
-        <details id="advanced"><summary>Fine-tune the rules <span>+</span></summary><div class="details-content">
+        <details id="advanced"><summary>Advanced rules <span>+</span></summary><div class="details-content">
           <label class="check"><input id="autoCancel" type="checkbox"> Assist L-cancel <span title="Automatically halve aerial landing lag. Off preserves the timed shield input.">ⓘ</span></label>
           <label class="check"><input id="turbo" type="checkbox"> Turbo hit-cancels <span title="Experimental: a successful hit can cancel into a different attack. Blocks and misses cannot.">ⓘ</span></label>
           <div class="form-grid"><label>Input buffer<select id="buffer"><option value="0">Strict · 0 frames</option><option value="3" selected>Light · 3 frames</option><option value="6">Easy · 6 frames</option></select></label><label>Seed<input id="seed" type="number" min="1" max="4294967295" step="1" value="1337"></label></div>
         </div></details>
       </section>
       <section class="panel" id="labPanel">
-        <div class="section-heading"><h2>Under the hood</h2><span class="micro">02 — PRACTICE</span></div>
+        <div class="section-heading"><h2>Practice</h2><span class="micro">02 / TRAIN</span></div>
         <div class="lab-tools"><label class="check"><input id="hitboxes" type="checkbox"> Hitboxes</label><label class="speed-label">Speed<select id="speed" aria-label="Simulation speed"><option value="1">1×</option><option value="0.5">½×</option><option value="0.25">¼×</option></select></label></div>
         <div class="training-only" id="trainingTools" hidden><label class="range-label">Dummy damage <output id="dummyValue">0%</output><input id="dummyDamage" type="range" min="0" max="200" step="10" value="0"></label><div class="button-row"><button id="stepBtn">Step <kbd>N</kbd></button><button id="resetPositionsBtn">Reset positions</button></div></div>
         <div id="telemetry" class="telemetry"><div><span>STATE</span><strong id="stateReadout">idle</strong></div><div><span>VELOCITY</span><strong id="velocityReadout">0.0 / 0.0</strong></div><div><span>BEST COMBO</span><strong id="comboReadout">—</strong></div><div><span>FRAME</span><strong id="frameReadout">00000</strong></div></div>
@@ -70,19 +71,30 @@
       <section class="panel chemistry-panel" id="chemistryPanel" hidden>
         <div class="section-heading"><h2>Chain reactions</h2><span class="micro">OPTIONAL</span></div>
         <div class="form-grid"><label>Blue element<select id="blueElement"><option value="fire">Fire</option><option value="water">Water</option><option value="spark">Spark</option><option value="oil">Oil</option></select></label><label>Red element<select id="redElement"><option value="water">Water</option><option value="fire">Fire</option><option value="spark">Spark</option><option value="oil">Oil</option></select></label></div>
+        <div class="material-key" aria-label="Material patterns"><span>∧ fire</span><span>~ water</span><span>○ oil</span><span>ϟ spark</span></div>
         <div class="reactions"><div><span class="fire">Fire</span> + oil <b>→ burst</b></div><div><span class="water">Water</span> + fire <b>→ steam lift</b></div><div><span class="spark">Spark</span> + water <b>→ conduction</b></div></div>
         <p class="panel-copy small">Down + special reflects briefly and coats a surface. Oil carries momentum; steam lifts jumps. Reactions can hurt either player.</p><button id="seedMaterialsBtn" class="wide">Load reaction demo</button><p class="micro note" id="paintHint">Training: click a platform to paint with Blue’s element.</p>
       </section>
       <section class="panel moves-panel">
-        <div class="section-heading"><h2>Move workshop</h2><span class="micro">03 — EXPLORE</span></div>
+        <div class="section-heading"><h2>Move workshop</h2><span class="micro">03 / MOVES</span></div>
         <label class="sr-only" for="moveSelect">Choose a move to inspect</label><select id="moveSelect"></select>
         <div class="move-command"><kbd id="moveCommand">Side + R</kbd><span id="moveTiming">8 / 7 / 20</span></div>
         <p class="panel-copy small" id="moveTip"></p>
         <button id="demoMoveBtn" class="wide">Watch move in training ↗</button>
         <p class="micro note">Demo resets the scene. Move or attack to take over.</p>
       </section>
+      <section class="panel view-panel">
+        <details id="viewSettings"><summary>Visual settings <span>+</span></summary><div class="details-content">
+          <label class="check"><input id="focusView" type="checkbox"> Focus view</label>
+          <p class="panel-copy small">Remove backdrop detail and impact particles. Keep fighters, surfaces and combat cues.</p>
+          <label class="check"><input id="phaseCues" type="checkbox" checked> Attack-phase marks</label>
+          <div class="cue-legend" aria-label="Attack phase legend"><span><i class="cue-windup"></i>Windup</span><span><i class="cue-active"></i>Active</span><span><i class="cue-recovery"></i>Recovery</span></div>
+          <div class="form-grid"><label>Motion<select id="motionMode"><option value="system">Follow system</option><option value="reduced">Reduced</option><option value="full">Full</option></select></label></div>
+          <p class="note">Reduced motion fixes the camera and removes shake, trails and ambient effects. Combat animation stays visible. These settings never restart the match.</p>
+        </div></details>
+      </section>
       <section class="panel controls-panel">
-        <details id="controlsHelp"><summary><span>Learn the moves</span><span>↗</span></summary><div class="details-content">
+        <details id="controlsHelp"><summary><span>Controls & techniques</span><span>↗</span></summary><div class="details-content">
           <div class="control-heading blue-text">PLAYER 1</div><dl class="control-list"><dt>A / D</dt><dd>Move / dash dance</dd><dt>W / Space</dt><dd>Jump / double jump</dd><dt>W / S</dt><dd>Aim up / down</dd><dt>F · J</dt><dd>Directional attack</dd><dt>T · I</dt><dd>Hold for a smash attack</dd><dt>G · L</dt><dd>Shield / dodge / tech</dd><dt>R · K</dt><dd>Special; direction selects move</dd><dt>E · H</dt><dd>Directional grab-throw</dd><dt>C</dt><dd>Slide (Flow / Alchemy)</dd><dt>V</dt><dd>Cycle element</dd></dl>
           <div class="control-heading red-text">PLAYER 2</div><p class="panel-copy small">Arrows to move, aim and jump. <b>/</b> hit · <b>;</b> smash · <b>Right Shift</b> shield · <b>.</b> special · <b>,</b> grab · <b>Right Ctrl</b> slide · <b>Num 0</b> cycle.</p>
           <div class="control-heading">STANDARD GAMEPAD</div><p class="panel-copy small">Left stick moves / aims. A jumps, X attacks, B specials, Y grabs. RB smashes, triggers shield, LB slides. Right stick performs directional smashes / aerials independently of movement. D-pad right cycles elements. First pad controls Blue; second controls Red in local versus. Non-standard GameCube adapters need mapping outside the app.</p>
@@ -92,7 +104,7 @@
       </section>
     </aside>
   </div>
-  <footer class="app-footer"><span>PRECISION FIRST. CHAOS BY CHOICE.</span><span>Original prototype · no engine, assets, or network required</span></footer>
+  <footer class="app-footer"><span>PRECISION FIRST. CHAOS BY CHOICE.</span><span>Original local fighter · Kinetic Print / 04</span></footer>
   <noscript><p class="error">JavaScript is required for this game. Enable it and reload the page.</p></noscript>
 </main>
 </body>

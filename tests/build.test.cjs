@@ -12,7 +12,7 @@ test('standalone build is reproducible, self-contained, and hashes exact source 
     const sha=bytes=>crypto.createHash('sha256').update(bytes).digest('hex');
     assert.equal(manifest.bundle,sha(first));for(const [name,hash]of Object.entries(manifest.sources))assert.equal(hash,sha(fs.readFileSync(path.join(root,name))));
     const html=first.toString();assert.ok(!html.includes('<script src='));assert.ok(!html.includes('rel="stylesheet"'));
-    const scripts=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)];assert.equal(scripts.length,3);
+    const scripts=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)];assert.equal(scripts.length,4);
     for(const [,source]of scripts)new vm.Script(source);
   } finally {fs.rmSync(dir,{recursive:true,force:true});}
 });

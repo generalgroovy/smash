@@ -2,7 +2,7 @@
 // Reproducible offline bundle. No bundler, downloads, timestamps or runtime loader.
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 const root=path.resolve(__dirname,'..'),out=path.resolve(process.argv[2]||path.join(root,'dist','smash-movement-lab.html'));
-const sources=['index.html','style.css','engine.js','animation.js','game.js'];
+const sources=['index.html','style.css','engine.js','animation.js','visual.js','game.js'];
 const text=Object.fromEntries(sources.map(name=>[name,fs.readFileSync(path.join(root,name),'utf8')]));
 let html=text['index.html'];
 const style='<link rel="stylesheet" href="style.css">';

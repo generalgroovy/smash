@@ -1,56 +1,38 @@
-# Validation record — v0.3, 18 September 2026
+# Validation — v0.4 / 18 September 2026
 
-## Commands actually run
+[Back to README](../README.md)
+
+## Executed results
 
 | Command | Result |
 | --- | --- |
-| `npm run verify` | Syntax checks, Node tests, and standalone build passed. |
-| `npm test` | **100 passed, 0 failed** in Node v22.16.0. |
-| `python tests/browser_smoke.py` | **36 checks passed** in Chromium plus separate HTTP delivery checks. |
-| `python tests/browser_expansion.py` | **47 checks passed** against the exact built standalone HTML. |
+| `npm run verify` | Syntax checks, 112 Node tests and standalone build passed. |
+| `python tests/browser_smoke.py` | 37 browser/HTTP checks passed. |
+| `python tests/browser_expansion.py` | 47 browser checks passed. |
+| `python tests/browser_visual.py` | 42 browser checks passed. |
 
-That is **100 Node tests and 83 browser/HTTP checks**. Counts are separate test groups, not a count of hardware devices or real users. Python Playwright and `/usr/bin/chromium` were used for browser QA; they are optional developer tooling, not runtime dependencies.
+The original 100 Node tests remain, plus 12 visual/documentation regressions. The original combat and animation modules match their v0.3 Git blob hashes exactly. Package version is 0.4.0; engine serialization version remains 3 because combat state has not changed.
 
-## Engine and animation coverage
+## What was checked
 
-The original 61 engine regressions still pass. They cover fixed-clock equivalence at 30/60/120/144 render callbacks per second, bounded catch-up, same-seed CPU behavior, input edges and buffers, jumps, collisions, attack phases, trades, shields, DI, L-cancel, techs, ledges, recovery, respawns, stock/draw/timeout outcomes, and bounded material effects. The original seeded fuzz test executes **36,000 simulation frames** across Duel, Flow, and Alchemy.
+**Combat and packaging:** fixed-clock equivalence at 30/60/120/144 render rates, same-seed CPU reproduction, 36,000 fuzzed simulation frames, collisions, trades, recovery restrictions, material reactions, all 21 playable move demonstrations, freeze/phase timing, deterministic bundling and exact-source hashes.
 
-The follow-up suite adds 38 tests for jab branching, running/slide attacks, clean/late knee profiles, burst startup and resource commitment, reflector timing and ricochet caps, vulnerability to melee, one-airtime Flux braking, retained Alchemy coating, projectile attribution, offensive spawn protection, same-tick shield breaks, hit-freeze clocks, steam/ignition limits, true-hit-only rebound, analog ledge release, independent attack aiming, and articulated animation. It includes a **6,000-frame paired deterministic replay** of expanded inputs.
+**Presentation:** player silhouettes independent of color; six different material alpha silhouettes; distinct windup/active/recovery marks; read-only rendering; selected text/player contrast pairs; unchanged paused state after visual preferences; persisted settings and unavailable-storage fallback; runtime system-motion changes and explicit overrides; no impact particles in Reduced mode; preserved material hazards in Focus; backdrop cache reuse/invalidation; 1920×1080 backing-size cap; 16:9 geometry and no horizontal page overflow at widths 320, 390, 540, 800, 1024, 1366 and 1920; essential touch jumping and 44px touch-action targets.
 
-Every move's sampled poses are checked across all of its frames at three fractional offsets for finite values. Additional assertions verify non-mutating animation samples, distinct strike silhouettes, phase correctness, freeze consistency, and fixed limb lengths even for unreachable targets. Those mathematical checks do not replace visual or human play review.
+**Documentation:** active relative links resolve and the entry README remains below 600 words. Move timing stays in engine metadata and the in-app workshop instead of a second manually maintained frame table.
 
-One packaging test builds twice and compares bytes, verifies SHA-256 hashes against every input file, checks absence of external script/stylesheet dependencies, and syntax-parses the three bundled JavaScript blocks.
+## Environment and method
 
-## Browser coverage
+Node v22.16.0, Python Playwright and installed Chromium. Browser runtime checks execute the exact generated offline HTML via `page.set_content`. The smoke suite separately starts the localhost server, fetches the six runtime files and compares their bytes with source. Browser screenshots were inspected for desktop/menu/combat, mobile, Focus and Alchemy views.
 
-The retained smoke suite covers startup, CPU play, keyboard/touch, stable pause, focus-loss clearing, frame stepping, short-tap latching, training controls, rule changes, Alchemy demonstrations, local player 2, match results, reset, offline execution, injected standard-gamepad input, and desktop/mobile overflow. The fifth HTTP entry check now includes `animation.js`.
+This environment has previously blocked top-level localhost/file navigation. The tests deliberately keep exact-byte runtime execution and HTTP delivery separate; neither is represented as a verified live GitHub Pages deployment. No browser security policy was disabled.
 
-The extension suite runs the **exact generated standalone HTML** with networking disabled. It checks all **21 playable move demonstrations** through the normal application/engine path, including the complete three-hit jab string, a projectile returned by reflection, and a hit-earned meteor rebound. It verifies the live phase meter, frozen strike poses/effects while paused, keyboard/gamepad takeover from demos, the question-mark controls shortcut, and layouts at 1366, 800, 390, and 360 pixels wide.
+## Not established
 
-Injected standard-pad tests cover quick right-stick smashes, back aerials with opposing left-stick drift, disconnect pausing, stable player/controller ownership, and takeover from a demonstration. These tests emulate API values; **they do not validate a physical controller or adapter**.
-
-Desktop strike and mobile reflection screenshots were generated for visual inspection. Runtime errors were collected during the checks and none were observed in the passing runs.
-
-## Managed-browser limitation, rechecked
-
-Top-level navigation to both localhost and `file://` returned `ERR_BLOCKED_BY_ADMINISTRATOR` in this environment. No browser policy was disabled. The browser harness uses Playwright `page.set_content` with the application's exact bytes or the exact built standalone file. The localhost server's actual HTTP responses are separately fetched and byte-compared using Python.
-
-Consequently, these are **real Chromium runtime and separate HTTP-byte checks**, not verified top-level file-opening or a live GitHub Pages deployment. The bundled file contains no remote runtime dependencies, but actual browser/file-origin behavior on the user's device remains unverified here.
-
-## Not validated or not implemented
-
-Physical GameCube adapters or physical controllers; Safari/Firefox; real mobile/Windows hardware; measured display/audio/input latency; long human play sessions; competitive balance; a real screen reader; bit-identical simulation across JavaScript engines. Online play, rollback, and a persistent replay UI are not delivered features.
-
-Passing tests establishes these specific checks, not absence of all bugs or a claim that every new move is competitively balanced. No numerical hardware speed-up is claimed.
+Physical GameCube adapters or other physical controllers; real Windows/mobile hardware; Firefox/Safari; end-to-end input latency; competitive balance; screen-reader playability; full accessibility compliance; cross-browser bit-identical networking; online/rollback behavior; live Pages deployment. Automated passes do not replace human game-feel testing. No percentage speed-up is claimed.
 
 ## Reproduce
 
-```sh
-npm run verify
-python tests/browser_smoke.py
-python tests/browser_expansion.py
-# Optional environment variables:
-# CHROMIUM=/path/to/chromium QA_OUTPUT=/tmp/smash-qa python tests/browser_expansion.py
-```
+Run the commands above from the repository root. Node tests need no install. Browser tooling needs Python Playwright and Chromium; `CHROMIUM` selects the executable and `QA_OUTPUT` selects the output directory. The default output is `qa-output/`, containing JSON results and screenshots. Build output and its SHA-256 manifest are in `dist/`.
 
-`npm run build` emits `dist/smash-movement-lab.html` and its `.sha256.json` manifest. `qa-output/` contains the browser result JSON files and screenshots and is ignored by Git.
+Historical audits are linked from [Development](DEVELOPMENT.md); they are not the current validation record.

@@ -1,11 +1,11 @@
 /* Browser shell: input, presentation and optional audio. The engine owns gameplay. */
 (() => {
   'use strict';
-  const S = window.Smash, $ = id => document.getElementById(id);
+  const S = window.Smash, V = window.SmashVisual, $ = id => document.getElementById(id);
   const canvas = $('game'), ctx = canvas.getContext('2d', { alpha: false });
-  if (!S || !ctx) { $('overlayTitle').textContent = 'Unable to start'; $('overlayCopy').textContent = 'Canvas 2D and JavaScript are required.'; return; }
-  const COLORS = ['#65cfff', '#ff8a79'];
-  const MAT = { fire: '#ff9d64', water: '#60c7ee', spark: '#f3df85', oil: '#ab92df', steam: '#acd7d9', charged: '#f3df85' };
+  if (!S || !V || !ctx) { $('overlayTitle').textContent = 'Unable to start'; $('overlayCopy').textContent = 'Canvas 2D and JavaScript are required.'; return; }
+  const COLORS = V.PLAYERS.map(p => p.color);
+  const MAT = Object.fromEntries(Object.entries(V.MATERIALS).map(([key,m]) => [key,m.color]));
   const RULES = {
     duel: ['The fundamentals. Fast movement, deliberate attacks, no stage hazards.', 'PURE PLATFORM COMBAT'],
     flow: ['Carry your speed. Slides, slide jumps and one wall kick per airtime extend the core.', 'MOMENTUM IS YOUR ADVANTAGE'],
@@ -26,8 +26,27 @@
   let opts = S.settings(saved), world = S.createGame(opts), clock = new S.FixedClock();
   let demo = null;
   let started = false, paused = true, speed = 1, hitboxes = false, sound = false, dirty = true, draws = 0;
-  let reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  matchMedia('(prefers-reduced-motion: reduce)').addEventListener?.('change', e => { reducedMotion = e.matches; });
+  const motionQuery = matchMedia('(prefers-reduced-motion: reduce)');
+  let storedView = {};
+  try { storedView = JSON.parse(localStorage.getItem('smash-view-v1') || '{}'); } catch (_) {}
+  let presentation = V.preferences(storedView);
+  let reducedMotion = V.reduced(presentation, motionQuery.matches);
+  // Presentation preferences are deliberately outside the serializable match state.
+  const backdropCanvas = document.createElement('canvas');
+  const backdropContext = backdropCanvas.getContext('2d', { alpha:false });
+  let backdropKey = '', backdropBuilds = 0;
+  function applyPresentation(save = false) {
+    reducedMotion = V.reduced(presentation, motionQuery.matches);
+    document.documentElement.dataset.motion = reducedMotion ? 'reduced' : 'full';
+    document.documentElement.dataset.focus = String(presentation.focus);
+    $('focusView').checked = presentation.focus; $('motionMode').value = presentation.motion;
+    $('phaseCues').checked = presentation.cues;
+    if(reducedMotion || presentation.focus) { particles=[]; rings=[]; trail=[[],[]]; shake=0; }
+    if(reducedMotion) view={x:480,y:265,scale:1};
+    dirty = true;
+    if(save)try {localStorage.setItem('smash-view-v1',JSON.stringify(presentation));} catch(_) {}
+  }
+  motionQuery.addEventListener?.('change', () => applyPresentation());
   let lastTime = 0, lastPerf = 0, fps = 60, feedbackUntil = 0, hudTick = -1, audio = null, voices = 0;
   let view = { x: 480, y: 265, scale: 1 }, shake = 0, particles = [], rings = [], trail = [[], []];
   const padSlots = [null, null], padStickMode = [null, null];
@@ -106,9 +125,9 @@
       if (['tech', 'parry', 'reaction', 'break', 'burst'].includes(e.type)) notify(`${e.id >= 0 ? world.fighters[e.id].name + ' · ' : ''}${e.text}`);
       if (e.type === 'confirm' && e.text.includes('COMBO')) notify(e.text);
       if (['hit', 'ko', 'burst', 'parry', 'tech', 'land'].includes(e.type)) {
-        const color = e.type === 'parry' || e.type === 'tech' ? '#a5f4d5' : COLORS[e.id] || '#ffe4ad';
-        if (rings.length < 24) rings.push({ x: e.x, y: e.y + 24, radius: e.type === 'ko' ? 30 : 8, age: 0, color, big: e.type === 'ko' || e.type === 'burst' });
-        if (!reducedMotion) {
+        const color = e.type === 'parry' || e.type === 'tech' ? V.ACCENT : COLORS[e.id] || V.PAPER;
+        if (!reducedMotion && !presentation.focus && rings.length < 24) rings.push({ x: e.x, y: e.y + 24, radius: e.type === 'ko' ? 30 : 8, age: 0, color, big: e.type === 'ko' || e.type === 'burst' });
+        if (!reducedMotion && !presentation.focus) {
           const count = e.type === 'ko' ? 25 : e.type === 'hit' || e.type === 'burst' ? 12 : 5;
           for (let n = 0; n < count && particles.length < 160; n++) {
             const r = visualHash(world.tick * 631 + n * 17 + (e.id + 1) * 119), a = r * Math.PI * 2;
@@ -137,7 +156,7 @@
     for (const f of world.fighters) {
       const id = f.id ? 'red' : 'blue';
       $(id + 'Damage').innerHTML = `${Math.round(f.damage)}<span>%</span>`;
-      $(id + 'State').textContent = f.respawn ? 'respawn' : f.helpless ? 'helpless' : f.attack?.kind || f.state;
+      $(id + 'State').textContent = f.respawn ? 'respawn' : f.helpless ? 'helpless' : f.attack ? S.MOVE_INFO[f.attack.kind].name : f.state;
       $(id + 'Shield').style.width = `${f.shieldHP}%`;
       $(id + 'Stocks').innerHTML = Array.from({ length: world.options.stocks }, (_, i) => `<i class="stock${i >= f.stocks ? ' lost' : ''}"></i>`).join('');
       $(id + 'Stocks').setAttribute('aria-label', `${f.name}: ${f.stocks} stocks`);
@@ -178,9 +197,9 @@
     if (begin) canvas.focus({ preventScroll: true }); else showIntro();
   }
   function showIntro() {
-    $('overlayEyebrow').textContent = 'A PLATFORM FIGHTER. A MOVEMENT PLAYGROUND.';
-    $('overlayTitle').textContent = 'Own the space.';
-    $('overlayCopy').innerHTML = 'Build momentum. Find an opening.<br>Send your rival beyond the edge.';
+    $('overlayEyebrow').textContent = 'PRECISION FIRST. EXPERIMENTS OPTIONAL.';
+    $('overlayTitle').innerHTML = 'Own the<br><em>space.</em>';
+    $('overlayCopy').innerHTML = 'Build momentum. Read the opening.<br>Send your rival beyond the edge.';
     $('startBtn').innerHTML = 'Play vs CPU <span>↗</span>';
     $('localBtn').textContent = 'Two players'; $('trainingBtn').textContent = 'Training lab';
     $('localBtn').hidden = $('trainingBtn').hidden = false;
@@ -218,9 +237,13 @@
     opts[id] = ['autoCancel', 'turbo'].includes(id) ? $(id).checked : ['seed', 'buffer'].includes(id) ? Number($(id).value) : $(id).value;
     reset();
   });
+  for(const id of ['focusView','motionMode','phaseCues']) $(id).addEventListener('change',()=>{
+    presentation=V.preferences({focus:$('focusView').checked,motion:$('motionMode').value,cues:$('phaseCues').checked});
+    applyPresentation(true);
+  });
   $('hitboxes').addEventListener('change', () => { hitboxes = $('hitboxes').checked; dirty = true; });
   $('speed').addEventListener('change', () => { speed = Number($('speed').value); clock.reset(); });
-  $('helpBtn').addEventListener('click', () => { $('controlsHelp').open = !$('controlsHelp').open; $('helpBtn').setAttribute('aria-expanded', String($('controlsHelp').open)); });
+  $('helpBtn').addEventListener('click', () => { $('controlsHelp').open = !$('controlsHelp').open; $('helpBtn').setAttribute('aria-expanded', String($('controlsHelp').open)); if($('controlsHelp').open) $('controlsHelp').scrollIntoView({block:'nearest',behavior:'instant'}); });
   $('controlsHelp').addEventListener('toggle', () => $('helpBtn').setAttribute('aria-expanded', String($('controlsHelp').open)));
   $('soundBtn').addEventListener('click', async () => {
     try {
@@ -297,7 +320,7 @@
   function updateMoveBook() {
     const kind=$('moveSelect').value, info=S.MOVE_INFO[kind], m=S.MOVES[kind];
     $('moveCommand').textContent=info.command;$('moveTip').textContent=info.tip;
-    $('moveTiming').textContent=m?`${m.start} / ${m.active} / ${m.end-m.start-m.active} f`:'6f release · 24f total';
+    $('moveTiming').textContent=m?`Start ${m.start} · Active ${m.active} · Recover ${m.end-m.start-m.active} f`:'Release 6f · Total 24f';
     $('moveTiming').title='Startup / active / recovery frames. Hit freeze extends real elapsed time.';
   }
   $('moveSelect').addEventListener('change',updateMoveBook);updateMoveBook();
@@ -353,7 +376,8 @@
     $('attackMeter').innerHTML=`<span class="startup" style="width:${m.start/m.end*100}%"></span><span class="active" style="width:${m.active/m.end*100}%"></span><span class="recovery" style="width:${(m.end-m.start-m.active)/m.end*100}%"></span><i style="left:${phase.frame/m.end*100}%"></i>`;
   }
   function resize() {
-    const r = canvas.getBoundingClientRect(), ratio = Math.min(2, window.devicePixelRatio || 1);
+    const r = canvas.getBoundingClientRect();
+    const ratio = Math.min(2, window.devicePixelRatio || 1, 1920 / Math.max(1,r.width), 1080 / Math.max(1,r.height));
     const w = Math.max(1, Math.round(r.width * ratio)), h = Math.max(1, Math.round(r.height * ratio));
     if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; dirty = true; }
   }
@@ -368,51 +392,22 @@
   function rounded(x, y, w, h, radius, fill) { ctx.fillStyle = fill; ctx.beginPath(); ctx.roundRect(x, y, w, h, radius); ctx.fill(); }
   function text(value, x, y, size, color, align = 'left', weight = 500) { ctx.fillStyle = color; ctx.font = `${weight} ${size}px ui-monospace, monospace`; ctx.textAlign = align; ctx.fillText(value, x, y); }
   function background() {
-    const sky = ctx.createLinearGradient(0, 0, 0, 540); sky.addColorStop(0, '#102433'); sky.addColorStop(.58, '#172b3b'); sky.addColorStop(1, '#0c1824');
-    ctx.fillStyle = sky; ctx.fillRect(0, 0, 960, 540);
-    const glow = ctx.createRadialGradient(480, 240, 10, 480, 240, 410); glow.addColorStop(0, '#31516455'); glow.addColorStop(1, '#1a354000'); ctx.fillStyle = glow; ctx.fillRect(0, 0, 960, 540);
-    for (let x = 0; x <= 960; x += 60) line(x, 0, x, 540, '#7490a00a');
-    for (let y = 0; y <= 540; y += 60) line(0, y, 960, y, '#7490a00a');
-    ctx.save(); ctx.globalAlpha = .12; circle(480, 264, 215, null, '#86b0c0'); circle(480, 264, 156, null, '#86b0c0');
-    line(250, 264, 710, 264, '#86b0c0'); line(480, 34, 480, 494, '#86b0c0'); ctx.restore();
-    text('KINETIC TEST FACILITY', 26, 31, 8, '#597e94'); text('SECTOR 0' + (opts.stage === 'triad' ? '1' : '2'), 934, 31, 8, '#597e94', 'right');
-    // Far-field silhouettes use a fixed seed and never touch the simulation RNG.
-    for (let i = 0; i < 20; i++) { const x = i * 55 - 20, h = 20 + visualHash(i + 78) * 90; ctx.fillStyle = '#0c182349'; ctx.fillRect(x, 505 - h, 42, h + 40); line(x + 5, 506 - h, x + 37, 506 - h, '#608ca419'); }
+    const key=`${canvas.width}:${canvas.height}:${opts.stage}:${presentation.focus}`;
+    if(key!==backdropKey){
+      backdropCanvas.width=canvas.width;backdropCanvas.height=canvas.height;
+      backdropContext.setTransform(canvas.width/960,0,0,canvas.height/540,0,0);
+      V.backdrop(backdropContext,{stage:opts.stage,focus:presentation.focus});
+      backdropKey=key;backdropBuilds++;
+    }
+    ctx.drawImage(backdropCanvas,0,0,canvas.width,canvas.height,0,0,960,540);
   }
   function drawStage() {
-    world.platforms.forEach((p, index) => {
-      ctx.save();
-      if (p.solid) {
-        const g = ctx.createLinearGradient(0, p.y, 0, p.y + 55); g.addColorStop(0, '#293e4d'); g.addColorStop(1, '#101e2c');
-        ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x + p.w, p.y); ctx.lineTo(p.x + p.w, p.y + 26); ctx.lineTo(p.x + p.w - 34, p.y + 44); ctx.lineTo(p.x + 34, p.y + 44); ctx.lineTo(p.x, p.y + 26); ctx.closePath(); ctx.fill();
-        line(p.x, p.y + 6, p.x + p.w, p.y + 6, '#476779');
-        for (let x = p.x + 22; x < p.x + p.w - 20; x += 38) line(x, p.y + 13, x + 17, p.y + 31, '#88a9b328', 2);
-        rounded(p.x + p.w / 2 - 37, p.y + 17, 74, 13, 3, '#0d1b24');
-        text('S M A S H', p.x + p.w / 2, p.y + 26, 7, '#81b9bd', 'center');
-        line(p.x + 32, p.y + 44, p.x + p.w - 32, p.y + 44, '#5cc0be44', 2);
-      } else {
-        rounded(p.x, p.y, p.w, p.h, 3, '#253d4e');
-        ctx.fillStyle = '#142737'; ctx.beginPath(); ctx.moveTo(p.x + 15, p.y + p.h); ctx.lineTo(p.x + p.w - 15, p.y + p.h); ctx.lineTo(p.x + p.w - 29, p.y + p.h + 9); ctx.lineTo(p.x + 29, p.y + p.h + 9); ctx.fill();
-        line(p.x + 9, p.y + 8, p.x + p.w - 9, p.y + 8, '#5e8b9b44');
-      }
-      line(p.x + 3, p.y, p.x + p.w - 3, p.y, '#b3e8da', 3);
-      for (const x of [p.x + 5, p.x + p.w - 5]) { circle(x, p.y, 3, '#aff1d8'); line(x, p.y - 5, x, p.y - 11, '#aff1d866'); }
-      if (hitboxes) { ctx.strokeStyle = p.solid ? '#84e3c6' : '#9eabfb'; ctx.lineWidth = 1; ctx.strokeRect(p.x, p.y, p.w, p.h); text(String(index), p.x + 8, p.y + 13, 8, '#c1e8dd'); }
-      ctx.restore();
+    V.platforms(ctx,world.platforms,presentation);
+    for(const c of world.cells)V.coating(ctx,c,world.platforms[c.platform],world.tick,reducedMotion);
+    if(hitboxes)world.platforms.forEach((p,index)=>{
+      ctx.strokeStyle=p.solid?V.ACCENT:V.PAPER;ctx.lineWidth=1;ctx.strokeRect(p.x,p.y,p.w,p.h);
+      text(String(index),p.x+6,p.y+13,9,V.PAPER);
     });
-    for (const c of world.cells) {
-      const p = world.platforms[c.platform], x = p.x + c.index * 24, width = Math.min(24, p.x + p.w - x);
-      ctx.save(); ctx.globalAlpha = Math.min(1, c.ttl / 30); rounded(x, p.y - 4, width, 6, 2, MAT[c.material]);
-      if (c.material === 'steam') {
-        for (let k = 0; k < 4; k++) { const phase = ((world.tick * .45 + k * 19) % 75); ctx.globalAlpha = (1 - phase / 80) * .2; circle(x + 12 + Math.sin(k + phase / 15) * 5, p.y - phase, 8 + phase * .1, '#c3eaf0'); }
-      }
-      if (c.material === 'fire') {
-        ctx.fillStyle = '#ffc074'; ctx.globalAlpha = .8;
-        for (let k = 0; k < 3; k++) { const h = 9 + Math.sin(world.tick * .2 + k) * 5; ctx.beginPath(); ctx.moveTo(x + k * 8, p.y); ctx.lineTo(x + k * 8 + 4, p.y - h); ctx.lineTo(x + k * 8 + 8, p.y); ctx.fill(); }
-      }
-      if (c.material === 'charged') line(x, p.y - 7, x + width, p.y - 9 + Math.sin(world.tick) * 3, '#fff6b6', 2);
-      ctx.restore();
-    }
   }
   function drawFighter(f, fraction = 0) {
     if (!f.stocks || f.respawn) return;
@@ -420,7 +415,7 @@
     const x=f.x, y=f.y, cx=x+16, flip=f.facing;
     // The collision root is authoritative. Only limb keyframes use fractional time.
     if (f.onGround) {ctx.save();ctx.translate(cx,y+57);ctx.scale(1,.2);circle(0,0,26,'#06111c70');ctx.restore();}
-    if (!reducedMotion && Math.abs(f.vx)>6) for (let i=0;i<trail[f.id].length-1;i+=2) {
+    if (!reducedMotion && !presentation.focus && Math.abs(f.vx)>6) for (let i=0;i<trail[f.id].length-1;i+=2) {
       const t=trail[f.id][i];ctx.save();ctx.globalAlpha=(i+1)*.019;
       rounded(t.x+6,t.y+8,20,38,8,color);ctx.restore();
     }
@@ -450,11 +445,11 @@
     let last=[chest[0]-5,chest[1]-6];
     for(let k=1;k<=5;k++) {
       const ratio=k/5, point=[chest[0]-5+lag*scarfLength*ratio,
-        chest[1]-6+ratio*4+Math.sin(pose.time*.17-k*.9)*ratio*(reducedMotion?.4:2.4)-f.vy*.12*ratio];
+        chest[1]-6+ratio*4+Math.sin(pose.time*.17-k*.9)*ratio*(reducedMotion?0:2.4)-f.vy*.12*ratio];
       line(last[0],last[1],point[0],point[1],k<4?color:'#d6f6e5',4-ratio*2);last=point;
     }
-    drawLimb(armB,'#315266','#567b8d',5);
-    drawLimb(legB,'#253f54','#50778a',7,true);
+    drawLimb(armB,V.player(f.id).shadow,'#778c81',5);
+    drawLimb(legB,V.player(f.id).shadow,'#778c81',7,true);
     // Armored torso joins an articulated shoulder line and pelvis.
     ctx.fillStyle='#101f31';ctx.beginPath();ctx.moveTo(chest[0]-10,chest[1]-5);ctx.lineTo(chest[0]+10,chest[1]-5);
     ctx.lineTo(hip[0]+9,hip[1]+5);ctx.lineTo(hip[0]-8,hip[1]+5);ctx.closePath();ctx.fill();
@@ -462,13 +457,10 @@
     line(chest[0]+6,chest[1]-2,hip[0]+4,hip[1]-1,color,7);
     line(chest[0]-4,chest[1],chest[0]+5,chest[1]-1,'#e2f3ee',2);
     line(hip[0]-7,hip[1]+1,hip[0]+8,hip[1]+1,'#bad7dc',3);
-    drawLimb(legF,color,'#5b899d',7,true);
-    rounded(head[0]-10,head[1]-7,20,19,6,'#0a1927');
-    rounded(head[0]-9,head[1]-6,18,16,5,color);
-    rounded(head[0]-1,head[1]-2,12,6,2,'#071e2a');
-    line(head[0]+1,head[1]-1,head[0]+9,head[1]-1,'#e5fff5',1.5);
-    line(head[0]-7,head[1]-5,head[0]+4,head[1]-5,'#e8fff075',1.2);
-    drawLimb(armF,color,'#9ccad3',6);
+    drawLimb(legF,color,V.player(f.id).shadow,7,true);
+    V.helmet(ctx,head,f.id);
+    V.mark(ctx,chest[0],chest[1]+7,3,f.id,V.PAPER,null);
+    drawLimb(armF,color,V.PAPER,6);
     if(f.hitlag && f.hitstun) circle(chest[0],chest[1],17,'#ffffff30');
     ctx.restore();
     // Effects follow the move's active region; never substitute for authoritative boxes.
@@ -497,14 +489,14 @@
       ctx.restore();
     }
     if(kind==='flux' && box) {
-      ctx.save();ctx.translate(cx,y+27);ctx.rotate((f.attack.age+fraction)*.14);
+      ctx.save();ctx.translate(cx,y+27);ctx.rotate(reducedMotion?0:(f.attack.age+fraction)*.14);
       for(let j=0;j<2;j++) {ctx.beginPath();for(let k=0;k<=6;k++){const a=k*Math.PI/3,r=36+j*4;ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r);}ctx.strokeStyle=j?'#d5fff475':color;ctx.lineWidth=j?1:2;ctx.stroke();}
       ctx.restore();
     }
-    if(f.state==='shield') {const r=22+f.shieldHP*.15;circle(cx,y+27,r,color+'13',f.shieldAge<=3?'#e4fff4':color+'bb',f.shieldAge<=3?3:1.5);}
+    if(f.state==='shield') {const r=22+f.shieldHP*.15;circle(cx,y+27,r,color+'13',f.shieldAge<=3?V.PAPER:color+'bb',f.shieldAge<=3?3:1.5);}
     if(f.state==='airDodge') circle(cx,y+27,32,null,'#b1efd97a',1.4);
     if(f.charge) {const r=19+f.charge.frames*.2;circle(cx,y+25,r,color+'10',color+'aa',1);circle(cx+flip*15,y+27,3+f.charge.frames/10,'#fff0c2');}
-    text(`P${f.id+1}`,cx,y-13,8,color,'center',700);
+    V.fighterMark(ctx,f,S.movePhase(f),presentation.cues);
     if(opts.rules==='alchemy')circle(x+29,y-16,2.5,MAT[f.element]);
     if(hitboxes) {
       ctx.lineWidth=1;ctx.strokeStyle=f.invuln?'#eeeeee':color;ctx.strokeRect(f.x,f.y,f.w,f.h);
@@ -537,7 +529,7 @@
     // Readable offscreen pointers when the bounded camera cannot fit a launched player.
     for (const f of active) {
       const x = (f.x + 16 - view.x) * view.scale + 480, y = (f.y + 28 - view.y) * view.scale + 270;
-      if (x < 12 || x > 948 || y < 14 || y > 513) { const px = Math.max(18, Math.min(942, x)), py = Math.max(22, Math.min(501, y)); circle(px, py, 12, '#102535', COLORS[f.id], 2); text(String(f.id + 1), px, py + 4, 10, COLORS[f.id], 'center'); }
+      if (x < 12 || x > 948 || y < 14 || y > 513) { const px = Math.max(18, Math.min(942, x)), py = Math.max(22, Math.min(501, y)); V.mark(ctx,px,py,12,f.id,V.INK,COLORS[f.id],2); text(String(f.id + 1), px, py + 4, 10, COLORS[f.id], 'center'); }
     }
     if (now > feedbackUntil) $('feedback').classList.remove('visible');
   }
@@ -554,7 +546,7 @@
   }
   // Explicit test/practice seam. No network calls, privileged access or hidden autoplay.
   window.smashLab = Object.freeze({ get state() { return world; }, get paused() { return paused; },
-    get view() { return { ...view }; }, get demo() { return demo ? { ...demo } : null; }, reset, setPaused, stepFrame, startDemo,
-    diagnostics: () => ({ particles: particles.length, rings: rings.length, droppedTicks: clock.dropped, draws, fps, version: S.VERSION }) });
-  reset({ begin: false }); requestAnimationFrame(frame);
+    get view() { return { ...view }; }, get presentation() { return {...presentation,reducedMotion}; }, get demo() { return demo ? { ...demo } : null; }, reset, setPaused, stepFrame, startDemo,
+    diagnostics: () => ({ particles: particles.length, rings: rings.length, droppedTicks: clock.dropped, draws, fps, backdropBuilds, backdropPixels:backdropCanvas.width*backdropCanvas.height, version: S.VERSION }) });
+  applyPresentation(); reset({ begin: false }); requestAnimationFrame(frame);
 })();
