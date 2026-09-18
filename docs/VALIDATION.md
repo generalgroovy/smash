@@ -1,44 +1,56 @@
-# Validation record — 18 September 2026
+# Validation record — v0.3, 18 September 2026
 
-## Results
+## Commands actually run
 
-- `npm run check`: passed JavaScript syntax checks for engine and browser shell.
-- `npm test`: **61 passed, 0 failed** in Node v22.16.0.
-- `python tests/browser_smoke.py`: **35 checks passed** with Python Playwright and `/usr/bin/chromium`.
+| Command | Result |
+| --- | --- |
+| `npm run verify` | Syntax checks, Node tests, and standalone build passed. |
+| `npm test` | **100 passed, 0 failed** in Node v22.16.0. |
+| `python tests/browser_smoke.py` | **36 checks passed** in Chromium plus separate HTTP delivery checks. |
+| `python tests/browser_expansion.py` | **47 checks passed** against the exact built standalone HTML. |
 
-No runtime package installation is required. Browser QA is optional tooling, not a dependency of the delivered game.
+That is **100 Node tests and 83 browser/HTTP checks**. Counts are separate test groups, not a count of hardware devices or real users. Python Playwright and `/usr/bin/chromium` were used for browser QA; they are optional developer tooling, not runtime dependencies.
 
-## Engine coverage
+## Engine and animation coverage
 
-The suite covers fixed-clock equivalence at 30/60/120/144 render callbacks per second, bounded catch-up, same-seed CPU reproduction, rising-edge inputs, hitstun action restrictions, short/full hops, fast fall, platform drops, one-way and solid collisions, high-speed diagonal contacts, attack phases, one-hit-per-target rules, trades, charged smash strength and release, directional launch influence, shields/parries/grab counters, air-dodge landing slides, L-cancel timing, techs/rolls, ledges/occupancy/regrab limits, recovery resource limits, Turbo hit-only cancels, clean respawns, stocks/draws/timeouts, malformed options/inputs, and optional material reactions.
+The original 61 engine regressions still pass. They cover fixed-clock equivalence at 30/60/120/144 render callbacks per second, bounded catch-up, same-seed CPU behavior, input edges and buffers, jumps, collisions, attack phases, trades, shields, DI, L-cancel, techs, ledges, recovery, respawns, stock/draw/timeout outcomes, and bounded material effects. The original seeded fuzz test executes **36,000 simulation frames** across Duel, Flow, and Alchemy.
 
-A seeded fuzz test advances **36,000 simulation frames** across Duel, Flow, and Alchemy, checking finite state and bounded objects. Seeded CPU reproduction additionally runs a 5,000-frame comparison. Passing these tests does not prove all possible inputs or interactions are bug-free.
+The follow-up suite adds 38 tests for jab branching, running/slide attacks, clean/late knee profiles, burst startup and resource commitment, reflector timing and ricochet caps, vulnerability to melee, one-airtime Flux braking, retained Alchemy coating, projectile attribution, offensive spawn protection, same-tick shield breaks, hit-freeze clocks, steam/ignition limits, true-hit-only rebound, analog ledge release, independent attack aiming, and articulated animation. It includes a **6,000-frame paired deterministic replay** of expanded inputs.
 
-## Browser and HTTP coverage
+Every move's sampled poses are checked across all of its frames at three fractional offsets for finite values. Additional assertions verify non-mutating animation samples, distinct strike silhouettes, phase correctness, freeze consistency, and fixed limb lengths even for unreachable targets. Those mathematical checks do not replace visual or human play review.
 
-The localhost server is started by the test and the four application entry files are fetched via Python HTTP and compared byte-for-byte with source. Actual DOM/canvas/input execution then runs in Chromium at desktop 1366x900 and mobile 390x844 sizes.
+One packaging test builds twice and compares bytes, verifies SHA-256 hashes against every input file, checks absence of external script/stylesheet dependencies, and syntax-parses the three bundled JavaScript blocks.
 
-Checks include menu/start, CPU progress, timer formatting, keyboard movement, stable pause, cleared input on blur, dirty-only paused redraws, training controls, single-frame advancement including queued attacks, dummy damage, short keyboard/touch taps, Flow/Alchemy/Duel transitions, seeded material demo, controls disclosure, local player 2, simultaneous-final-KO draw, full reset, overflow, uncaught errors, offline self-contained execution, and injected standard-gamepad axes/jump input.
+## Browser coverage
 
-### Managed-browser limitation
+The retained smoke suite covers startup, CPU play, keyboard/touch, stable pause, focus-loss clearing, frame stepping, short-tap latching, training controls, rule changes, Alchemy demonstrations, local player 2, match results, reset, offline execution, injected standard-gamepad input, and desktop/mobile overflow. The fifth HTTP entry check now includes `animation.js`.
 
-This execution environment's managed Chromium policy blocks top-level navigation to localhost and `file://` (`ERR_BLOCKED_BY_ADMINISTRATOR`). No browser policy was disabled. To test the actual runtime, the harness reads the exact local HTML/CSS/JavaScript, inlines the stylesheet and scripts, and uses Playwright `page.set_content`. HTTP delivery is tested separately as described above. The offline test disables browser networking and executes those same self-contained bytes.
+The extension suite runs the **exact generated standalone HTML** with networking disabled. It checks all **21 playable move demonstrations** through the normal application/engine path, including the complete three-hit jab string, a projectile returned by reflection, and a hit-earned meteor rebound. It verifies the live phase meter, frozen strike poses/effects while paused, keyboard/gamepad takeover from demos, the question-mark controls shortcut, and layouts at 1366, 800, 390, and 360 pixels wide.
 
-Consequently, these are **real Chromium runtime and separate HTTP-byte checks**, not a claim that top-level localhost navigation, a direct file open, or live GitHub Pages deployment was verified in this environment. The standalone HTML artifact uses the same inlining strategy and contains no remote dependencies.
+Injected standard-pad tests cover quick right-stick smashes, back aerials with opposing left-stick drift, disconnect pausing, stable player/controller ownership, and takeover from a demonstration. These tests emulate API values; **they do not validate a physical controller or adapter**.
 
-### Not validated
+Desktop strike and mobile reflection screenshots were generated for visual inspection. Runtime errors were collected during the checks and none were observed in the passing runs.
 
-Physical GameCube adapters or any physical controller; Safari/Firefox; real Windows or mobile hardware; real display/audio/input latency; long human matches; competitive balance; accessibility with an actual screen reader; cross-JavaScript-engine bit-identical simulation; online or rollback behavior. The gamepad smoke check uses an injected standard mapping, not physical hardware.
+## Managed-browser limitation, rechecked
+
+Top-level navigation to both localhost and `file://` returned `ERR_BLOCKED_BY_ADMINISTRATOR` in this environment. No browser policy was disabled. The browser harness uses Playwright `page.set_content` with the application's exact bytes or the exact built standalone file. The localhost server's actual HTTP responses are separately fetched and byte-compared using Python.
+
+Consequently, these are **real Chromium runtime and separate HTTP-byte checks**, not verified top-level file-opening or a live GitHub Pages deployment. The bundled file contains no remote runtime dependencies, but actual browser/file-origin behavior on the user's device remains unverified here.
+
+## Not validated or not implemented
+
+Physical GameCube adapters or physical controllers; Safari/Firefox; real mobile/Windows hardware; measured display/audio/input latency; long human play sessions; competitive balance; a real screen reader; bit-identical simulation across JavaScript engines. Online play, rollback, and a persistent replay UI are not delivered features.
+
+Passing tests establishes these specific checks, not absence of all bugs or a claim that every new move is competitively balanced. No numerical hardware speed-up is claimed.
 
 ## Reproduce
 
 ```sh
-npm run check
-npm test
-# With Python Playwright and Chromium installed:
+npm run verify
 python tests/browser_smoke.py
-# Optionally:
-# CHROMIUM=/path/to/chromium QA_OUTPUT=/tmp/smash-qa python tests/browser_smoke.py
+python tests/browser_expansion.py
+# Optional environment variables:
+# CHROMIUM=/path/to/chromium QA_OUTPUT=/tmp/smash-qa python tests/browser_expansion.py
 ```
 
-Generated QA files include `browser-results.json`, desktop menu/Alchemy screenshots, and mobile menu/training screenshots. They are not required to run the game.
+`npm run build` emits `dist/smash-movement-lab.html` and its `.sha256.json` manifest. `qa-output/` contains the browser result JSON files and screenshots and is ignored by Git.

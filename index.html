@@ -9,12 +9,13 @@
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%237fe4c0' d='M38 3 9 37h21l-4 24 29-36H34z'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="style.css">
   <script src="engine.js" defer></script>
+  <script src="animation.js" defer></script>
   <script src="game.js" defer></script>
 </head>
 <body>
 <main class="app">
   <header class="topbar">
-    <a class="wordmark" href="./" aria-label="SMASH Movement Lab home"><span class="mark">↯</span> SMASH <span class="edition">MOVEMENT LAB <b>02</b></span></a>
+    <a class="wordmark" href="./" aria-label="SMASH Movement Lab home"><span class="mark">↯</span> SMASH <span class="edition">MOVEMENT LAB <b>03</b></span></a>
     <div class="header-actions"><span class="local-badge"><i></i> LOCAL · NO DOWNLOADS</span><button id="soundBtn" class="quiet" aria-pressed="false">Sound off</button><button id="helpBtn" class="quiet" aria-expanded="false" aria-controls="controlsHelp">Controls <kbd>?</kbd></button></div>
   </header>
   <div class="workspace">
@@ -22,6 +23,7 @@
       <div class="arena-bar"><div><span class="live-dot"></span> <strong id="matchLabel">DUEL</strong><span class="separator">/</span><span id="stageLabel">TRIAD</span></div><div class="arena-tools"><span id="clockLabel">4:00</span><button id="pauseBtn" class="icon-button" title="Pause / resume (Escape)" aria-label="Pause or resume">Ⅱ</button><button id="fullscreenBtn" class="icon-button" title="Fullscreen arena" aria-label="Fullscreen arena">⛶</button></div></div>
       <div class="viewport">
         <canvas id="game" width="960" height="540" tabindex="0" aria-label="Platform fighter. Use A and D to move, Space or W to jump, F to attack. Full controls below.">Your browser needs Canvas 2D support to play.</canvas>
+        <div id="attackGuide" class="frame-guide" hidden><span id="attackReadout">READY</span><div id="attackMeter" class="phase-meter"></div></div>
         <div id="feedback" class="feedback" aria-live="polite"></div>
         <div id="overlay" class="overlay">
           <div class="intro-card">
@@ -69,13 +71,22 @@
         <div class="section-heading"><h2>Chain reactions</h2><span class="micro">OPTIONAL</span></div>
         <div class="form-grid"><label>Blue element<select id="blueElement"><option value="fire">Fire</option><option value="water">Water</option><option value="spark">Spark</option><option value="oil">Oil</option></select></label><label>Red element<select id="redElement"><option value="water">Water</option><option value="fire">Fire</option><option value="spark">Spark</option><option value="oil">Oil</option></select></label></div>
         <div class="reactions"><div><span class="fire">Fire</span> + oil <b>→ burst</b></div><div><span class="water">Water</span> + fire <b>→ steam lift</b></div><div><span class="spark">Spark</span> + water <b>→ conduction</b></div></div>
-        <p class="panel-copy small">Aim down + special to coat a surface. Oil carries momentum; steam lifts jumps. Reactions can hurt either player.</p><button id="seedMaterialsBtn" class="wide">Load reaction demo</button><p class="micro note" id="paintHint">Training: click a platform to paint with Blue’s element.</p>
+        <p class="panel-copy small">Down + special reflects briefly and coats a surface. Oil carries momentum; steam lifts jumps. Reactions can hurt either player.</p><button id="seedMaterialsBtn" class="wide">Load reaction demo</button><p class="micro note" id="paintHint">Training: click a platform to paint with Blue’s element.</p>
+      </section>
+      <section class="panel moves-panel">
+        <div class="section-heading"><h2>Move workshop</h2><span class="micro">03 — EXPLORE</span></div>
+        <label class="sr-only" for="moveSelect">Choose a move to inspect</label><select id="moveSelect"></select>
+        <div class="move-command"><kbd id="moveCommand">Side + R</kbd><span id="moveTiming">8 / 7 / 20</span></div>
+        <p class="panel-copy small" id="moveTip"></p>
+        <button id="demoMoveBtn" class="wide">Watch move in training ↗</button>
+        <p class="micro note">Demo resets the scene. Move or attack to take over.</p>
       </section>
       <section class="panel controls-panel">
         <details id="controlsHelp"><summary><span>Learn the moves</span><span>↗</span></summary><div class="details-content">
-          <div class="control-heading blue-text">PLAYER 1</div><dl class="control-list"><dt>A / D</dt><dd>Move / dash dance</dd><dt>W / Space</dt><dd>Jump / double jump</dd><dt>W / S</dt><dd>Aim up / down</dd><dt>F · J</dt><dd>Directional attack</dd><dt>T · I</dt><dd>Hold for a smash attack</dd><dt>G · L</dt><dd>Shield / dodge / tech</dd><dt>R · K</dt><dd>Special; up = recovery</dd><dt>E · H</dt><dd>Directional grab-throw</dd><dt>C</dt><dd>Slide (Flow / Alchemy)</dd><dt>V</dt><dd>Cycle element</dd></dl>
+          <div class="control-heading blue-text">PLAYER 1</div><dl class="control-list"><dt>A / D</dt><dd>Move / dash dance</dd><dt>W / Space</dt><dd>Jump / double jump</dd><dt>W / S</dt><dd>Aim up / down</dd><dt>F · J</dt><dd>Directional attack</dd><dt>T · I</dt><dd>Hold for a smash attack</dd><dt>G · L</dt><dd>Shield / dodge / tech</dd><dt>R · K</dt><dd>Special; direction selects move</dd><dt>E · H</dt><dd>Directional grab-throw</dd><dt>C</dt><dd>Slide (Flow / Alchemy)</dd><dt>V</dt><dd>Cycle element</dd></dl>
           <div class="control-heading red-text">PLAYER 2</div><p class="panel-copy small">Arrows to move, aim and jump. <b>/</b> hit · <b>;</b> smash · <b>Right Shift</b> shield · <b>.</b> special · <b>,</b> grab · <b>Right Ctrl</b> slide · <b>Num 0</b> cycle.</p>
-          <div class="control-heading">STANDARD GAMEPAD</div><p class="panel-copy small">Left stick moves / aims. A jumps, X attacks, B specials, Y grabs. RB smashes, triggers shield, LB slides. D-pad right cycles elements. First pad controls Blue; second controls Red in local versus. Non-standard GameCube adapters need mapping outside the app.</p>
+          <div class="control-heading">STANDARD GAMEPAD</div><p class="panel-copy small">Left stick moves / aims. A jumps, X attacks, B specials, Y grabs. RB smashes, triggers shield, LB slides. Right stick performs directional smashes / aerials independently of movement. D-pad right cycles elements. First pad controls Blue; second controls Red in local versus. Non-standard GameCube adapters need mapping outside the app.</p>
+          <div class="control-heading">NEW STRINGS &amp; SPECIALS</div><p class="panel-copy small"><b>Jab string:</b> tap attack again late in recovery for Cross, then Heel Turn. <b>Run + attack:</b> Shoulder Drive. <b>Slide + attack:</b> Slipstream Sweep. <b>Side + special:</b> Vector Burst; air use ends helpless. <b>Down + special:</b> Flux Field reflects projectiles during its brief active window, not melee. In Alchemy it also coats the floor. <b>Down air + hold jump on hit:</b> one Meteor Rebound per airtime.</p>
           <div class="control-heading">THE GOOD STUFF</div><p class="panel-copy small"><b>Wavedash:</b> jump, then shield + diagonally down. <b>L-cancel:</b> tap shield within 7 frames before landing an aerial. <b>Tech:</b> tap shield before a hard landing during hitstun. <b>DI:</b> hold a direction during hit freeze to change your launch angle. <b>Ledge:</b> inward climbs, jump hops, down drops. <b>Fast fall:</b> tap down after your jump’s apex.</p>
         </div></details>
       </section>

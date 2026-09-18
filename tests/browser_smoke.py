@@ -18,8 +18,8 @@ checks = []
 def load(page):
     html = (ROOT/'index.html').read_text(encoding='utf-8')
     html = html.replace('<link rel="stylesheet" href="style.css">', '<style>'+(ROOT/'style.css').read_text(encoding='utf-8')+'</style>')
-    html = html.replace('<script src="engine.js" defer></script>', '').replace('<script src="game.js" defer></script>', '')
-    scripts = '<script>'+(ROOT/'engine.js').read_text(encoding='utf-8')+'</script><script>'+(ROOT/'game.js').read_text(encoding='utf-8')+'</script>'
+    html = html.replace('<script src="engine.js" defer></script>', '').replace('<script src="game.js" defer></script>', '').replace('<script src="animation.js" defer></script>', '')
+    scripts = '<script>'+(ROOT/'engine.js').read_text(encoding='utf-8')+'</script><script>'+(ROOT/'animation.js').read_text(encoding='utf-8')+'</script><script>'+(ROOT/'game.js').read_text(encoding='utf-8')+'</script>'
     page.set_content(html.replace('</body>', scripts+'</body>'), wait_until='load')
     page.wait_for_function('window.smashLab')
 
@@ -35,7 +35,7 @@ try:
         page = browser.new_page(viewport={'width':1366,'height':900}, device_scale_factor=1)
         errors=[]
         page.on('pageerror', lambda err: errors.append(str(err)))
-        for filename in ['index.html','engine.js','game.js','style.css']:
+        for filename in ['index.html','engine.js','animation.js','game.js','style.css']:
             with urllib.request.urlopen('http://127.0.0.1:8765/'+filename) as response:
                 check('HTTP serves '+filename,response.status==200 and response.read()==(ROOT/filename).read_bytes())
         load(page)
@@ -62,7 +62,7 @@ try:
         check('frame advance remains paused',page.evaluate('smashLab.paused'))
         page.evaluate("window.dispatchEvent(new KeyboardEvent('keydown',{code:'KeyF',key:'f'}))")
         page.click('#stepBtn')
-        check('frame advance can inspect a queued player action',page.evaluate('smashLab.state.fighters[0].attack?.kind === "jab"'))
+        check('frame advance can inspect a queued player action',page.evaluate('smashLab.state.fighters[0].attack?.kind === \"jab\"'))
         page.evaluate("window.dispatchEvent(new KeyboardEvent('keyup',{code:'KeyF',key:'f'}))")
         page.locator('#dummyDamage').fill('100');page.locator('#dummyDamage').dispatch_event('input')
         check('dummy damage control applies',page.evaluate('smashLab.state.fighters[1].damage')==100)
