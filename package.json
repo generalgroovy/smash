@@ -1,0 +1,12 @@
+{
+  "name": "smash-movement-lab",
+  "version": "0.2.0",
+  "private": true,
+  "description": "A dependency-free, deterministic platform-fighter movement lab.",
+  "scripts": {
+    "test": "node --test tests/*.test.cjs",
+    "check": "node --check engine.js && node --check game.js",
+    "serve": "node serve.cjs"
+  },
+  "engines": { "node": ">=18" }
+}
