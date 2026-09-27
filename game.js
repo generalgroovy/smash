@@ -73,6 +73,7 @@ const fighters = [
 ];
 
 function resetMatch() {
+  keys.clear();
   fighters[0].x = 320;
   fighters[0].y = 360;
   fighters[0].damage = 0;
@@ -282,8 +283,17 @@ function draw() {
   drawHud();
 }
 
-function loop() {
-  update();
+let previousFrame = null;
+let accumulatedTime = 0;
+const STEP_MS = 1000 / 60;
+
+function loop(now) {
+  if (previousFrame !== null) accumulatedTime += Math.min(100, Math.max(0, now - previousFrame));
+  previousFrame = now;
+  while (accumulatedTime >= STEP_MS) {
+    update();
+    accumulatedTime -= STEP_MS;
+  }
   draw();
   requestAnimationFrame(loop);
 }
@@ -293,7 +303,7 @@ window.addEventListener("keydown", e => {
   keys.add(key);
 
   for (const f of fighters) {
-    if (key === f.controls.jump) {
+    if (key === f.controls.jump && !e.repeat && fighters.every(player => player.stocks > 0)) {
       jump(f);
     }
   }
@@ -308,7 +318,8 @@ window.addEventListener("keydown", e => {
 window.addEventListener("keyup", e => {
   keys.delete(e.key.toLowerCase());
 });
+window.addEventListener("blur", () => { keys.clear(); previousFrame = null; accumulatedTime = 0; });
 
 resetBtn.addEventListener("click", resetMatch);
 
-loop();
+requestAnimationFrame(loop);
