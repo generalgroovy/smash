@@ -1,6 +1,8 @@
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 const resetBtn = document.getElementById("resetBtn");
+const pauseBtn = document.getElementById("pauseBtn");
+let paused = false;
 
 const W = canvas.width;
 const H = canvas.height;
@@ -74,6 +76,7 @@ const fighters = [
 
 function resetMatch() {
   keys.clear();
+  setPaused(false);
   fighters[0].x = 320;
   fighters[0].y = 360;
   fighters[0].damage = 0;
@@ -287,8 +290,17 @@ let previousFrame = null;
 let accumulatedTime = 0;
 const STEP_MS = 1000 / 60;
 
+function setPaused(value) {
+  paused = value;
+  keys.clear();
+  previousFrame = null;
+  accumulatedTime = 0;
+  pauseBtn.textContent = paused ? "Resume" : "Pause";
+  pauseBtn.setAttribute("aria-pressed", String(paused));
+}
+
 function loop(now) {
-  if (previousFrame !== null) accumulatedTime += Math.min(100, Math.max(0, now - previousFrame));
+  if (!paused && previousFrame !== null) accumulatedTime += Math.min(100, Math.max(0, now - previousFrame));
   previousFrame = now;
   while (accumulatedTime >= STEP_MS) {
     update();
@@ -299,7 +311,10 @@ function loop(now) {
 }
 
 window.addEventListener("keydown", e => {
+  if (e.ctrlKey || e.altKey || e.metaKey || e.target?.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(e.target?.tagName)) return;
   const key = e.key.toLowerCase();
+  if (key === "p" && !e.repeat) { setPaused(!paused); e.preventDefault(); return; }
+  if (paused) return;
   keys.add(key);
 
   for (const f of fighters) {
@@ -309,7 +324,7 @@ window.addEventListener("keydown", e => {
   }
 
   if (
-    ["arrowleft", "arrowright", "arrowup", " "].includes(key)
+    ["arrowleft", "arrowright", "arrowup"].includes(key)
   ) {
     e.preventDefault();
   }
@@ -318,8 +333,10 @@ window.addEventListener("keydown", e => {
 window.addEventListener("keyup", e => {
   keys.delete(e.key.toLowerCase());
 });
-window.addEventListener("blur", () => { keys.clear(); previousFrame = null; accumulatedTime = 0; });
+window.addEventListener("blur", () => setPaused(true));
+document.addEventListener("visibilitychange", () => { if (document.hidden) setPaused(true); });
 
 resetBtn.addEventListener("click", resetMatch);
+pauseBtn.addEventListener("click", () => setPaused(!paused));
 
 requestAnimationFrame(loop);
