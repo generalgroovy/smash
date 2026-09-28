@@ -5,7 +5,7 @@ const {readFileSync}=require('node:fs');
 const source=readFileSync(require('node:path').join(__dirname,'..','game.js'),'utf8');
 function setup(){
  const events={};let ticks=0,jumps=0;
- const context=vm.createContext({paused:false,pauseBtn:{textContent:'Pause',setAttribute(){},addEventListener(){}},document:{addEventListener(){}},window:{addEventListener(k,f){events[k]=f;}},keys:new Set(),fighters:[{stocks:3,controls:{jump:'w'}}],resetBtn:{addEventListener(){}},resetMatch(){},update(){ticks++;},draw(){},jump(){jumps++;},requestAnimationFrame(){}});
+ const context=vm.createContext({paused:false,winner:null,modeSelect:{addEventListener(){}},pauseBtn:{textContent:'Pause',setAttribute(){},addEventListener(){}},document:{addEventListener(){}},window:{addEventListener(k,f){events[k]=f;}},keys:new Set(),fighters:[{stocks:3,controls:{jump:'w'}}],resetBtn:{addEventListener(){}},resetMatch(){},update(){ticks++;},draw(){},jump(){jumps++;},requestAnimationFrame(){}});
  vm.runInContext(source.slice(source.indexOf('let previousFrame')),context);
  return {events,context,ticks:()=>ticks,jumps:()=>jumps,run:code=>vm.runInContext(code,context)};
 }

@@ -42,7 +42,7 @@ canvas {
   color: #cbd3f7;
 }
 
-button {
+button, select {
   background: #6d7cff;
   color: white;
   border: 0;
@@ -50,8 +50,14 @@ button {
   border-radius: 10px;
   font-weight: 700;
   cursor: pointer;
+  min-height: 44px;
 }
 
 button:hover {
   background: #8793ff;
 }
+
+:focus-visible { outline: 3px solid #fcd34d; outline-offset: 3px; }
+details { color: #cbd3f7; line-height: 1.6; }
+summary { cursor: pointer; width: fit-content; padding: 10px 0; }
+#matchStatus { min-height: 1.5em; }

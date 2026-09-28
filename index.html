@@ -10,20 +10,19 @@
   <main>
     <h1>Platform Fighter</h1>
 
-    <canvas id="game" width="960" height="540"></canvas>
+    <canvas id="game" width="960" height="540" tabindex="0" aria-label="Platform fighter arena. Controls are below the game."></canvas>
 
     <section class="hud">
-      <div>
-        <strong>Player 1</strong><br />
-        Move: A/D · Jump: W · Attack: F
-      </div>
-      <div>
-        <strong>Player 2</strong><br />
-        Move: ←/→ · Jump: ↑ · Attack: /
-      </div>
-      <button id="resetBtn">Reset</button>
+      <label>Mode <select id="modeSelect"><option value="match">Two players</option><option value="training">Practice</option></select></label>
+      <button id="resetBtn">New match</button>
       <button id="pauseBtn" aria-pressed="false" title="Pause / resume (P)">Pause</button>
     </section>
+    <p id="matchStatus" role="status">Three stocks each. Knock the other player out.</p>
+    <details>
+      <summary>Controls &amp; how to play</summary>
+      <p><strong>P1:</strong> A / D move · W jump · F attack<br /><strong>P2:</strong> ← / → move · ↑ jump · / attack</p>
+      <p>Jump twice. Higher damage means stronger knockback. P pauses. Practice gives P1 a stationary opponent and unlimited respawns; choose Two players for a fresh match.</p>
+    </details>
   </main>
 
   <script src="game.js"></script>

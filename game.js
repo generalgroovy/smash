@@ -2,7 +2,27 @@ const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 const resetBtn = document.getElementById("resetBtn");
 const pauseBtn = document.getElementById("pauseBtn");
+const modeSelect = document.getElementById("modeSelect");
+const matchStatus = document.getElementById("matchStatus");
 let paused = false;
+let training = false;
+let winner = null;
+let practiceStep = 0;
+
+function announce(text) {
+  if (matchStatus.textContent !== text) matchStatus.textContent = text;
+}
+
+function practiceProgress(step) {
+  if (!training || step !== practiceStep + 1) return;
+  practiceStep = step;
+  announce([
+    "Move with A / D.",
+    "Now press W to jump. Press again for a second jump.",
+    "Move beside P2 and press F to hit.",
+    "Hit! More damage means more knockback. Practice freely; stocks are unlimited."
+  ][practiceStep]);
+}
 
 const W = canvas.width;
 const H = canvas.height;
@@ -76,13 +96,15 @@ const fighters = [
 
 function resetMatch() {
   keys.clear();
+  winner = null;
+  practiceStep = 0;
   setPaused(false);
   fighters[0].x = 320;
   fighters[0].y = 360;
   fighters[0].damage = 0;
   fighters[0].stocks = 3;
 
-  fighters[1].x = 600;
+  fighters[1].x = training ? 430 : 600;
   fighters[1].y = 360;
   fighters[1].damage = 0;
   fighters[1].stocks = 3;
@@ -93,7 +115,12 @@ function resetMatch() {
     f.jumps = 2;
     f.hitstun = 0;
     f.attackCooldown = 0;
+    f.hitFlash = 0;
+    f.facing = f === fighters[0] ? 1 : -1;
   }
+  resetBtn.textContent = training ? "Reset practice" : "New match";
+  announce(training ? "Move with A / D." : "Three stocks each. Knock the other player out.");
+  canvas.focus();
 }
 
 function respawn(fighter, index) {
@@ -117,15 +144,18 @@ function rectsOverlap(a, b) {
 
 function applyInput(f) {
   if (f.hitstun > 0) return;
+  if (training && f === fighters[1]) return;
 
   const accel = f.onGround ? 1.15 : 1.15 * config.airControl;
 
   if (keys.has(f.controls.left)) {
+    practiceProgress(1);
     f.vx -= accel;
     f.facing = -1;
   }
 
   if (keys.has(f.controls.right)) {
+    practiceProgress(1);
     f.vx += accel;
     f.facing = 1;
   }
@@ -137,6 +167,8 @@ function applyInput(f) {
 
 function jump(f) {
   if (f.jumps <= 0) return;
+  if (training && f === fighters[1]) return;
+  practiceProgress(2);
 
   f.vy = -14.5;
   f.jumps--;
@@ -162,6 +194,8 @@ function attack(attacker) {
       victim.vy = -7 - victim.damage * 0.04;
       victim.damage += 11;
       victim.hitstun = 16;
+      victim.hitFlash = 18;
+      practiceProgress(3);
     }
   }
 }
@@ -204,19 +238,28 @@ function physics(f) {
     f.y > H + config.blastZone
   ) {
     const index = fighters.indexOf(f);
-    f.stocks--;
+    if (!training) f.stocks--;
     if (f.stocks > 0) respawn(f, index);
   }
 
   if (f.attackCooldown > 0) f.attackCooldown--;
   if (f.hitstun > 0) f.hitstun--;
+  if (f.hitFlash > 0) f.hitFlash--;
 }
 
 function update() {
+  if (winner) return;
   for (const f of fighters) {
     if (f.stocks <= 0) continue;
     applyInput(f);
     physics(f);
+  }
+  if (!training && fighters.some(f => f.stocks <= 0)) {
+    winner = fighters.every(f => f.stocks <= 0) ? "Draw" : fighters[0].stocks <= 0 ? "Player 2 wins" : "Player 1 wins";
+    keys.clear();
+    resetBtn.textContent = "Rematch";
+    announce(`${winner}. Choose Rematch to play again.`);
+    resetBtn.focus();
   }
 }
 
@@ -236,6 +279,18 @@ function drawFighter(f) {
   ctx.fillStyle = f.color;
   ctx.fillRect(f.x, f.y, f.w, f.h);
 
+  ctx.font = "bold 16px system-ui";
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#ffffff";
+  ctx.fillText(f === fighters[0] ? "P1" : "P2", f.x + f.w / 2, f.y - 10);
+  if (f.hitFlash > 0) {
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = "#ffffff";
+    ctx.strokeRect(f.x - 4, f.y - 4, f.w + 8, f.h + 8);
+    ctx.fillText("+11", f.x + f.w / 2, f.y - 30);
+  }
+  ctx.textAlign = "left";
+
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(f.x + (f.facing === 1 ? 27 : 8), f.y + 14, 8, 8);
 
@@ -252,13 +307,8 @@ function drawFighter(f) {
 function drawHud() {
   ctx.font = "22px system-ui";
   ctx.fillStyle = "#ffffff";
-  ctx.fillText(`P1 ${fighters[0].damage}% · Stocks: ${fighters[0].stocks}`, 28, 38);
-  ctx.fillText(`P2 ${fighters[1].damage}% · Stocks: ${fighters[1].stocks}`, W - 300, 38);
-
-  const winner =
-    fighters[0].stocks <= 0 ? "Player 2 wins" :
-    fighters[1].stocks <= 0 ? "Player 1 wins" :
-    null;
+  ctx.fillText(`P1 ${fighters[0].damage}% · ${training ? "Practice" : "Stocks: " + fighters[0].stocks}`, 28, 38);
+  ctx.fillText(`P2 ${fighters[1].damage}% · ${training ? "Practice" : "Stocks: " + fighters[1].stocks}`, W - 300, 38);
 
   if (winner) {
     ctx.fillStyle = "rgba(0,0,0,0.55)";
@@ -269,7 +319,7 @@ function drawHud() {
     ctx.textAlign = "center";
     ctx.fillText(winner, W / 2, H / 2);
     ctx.font = "22px system-ui";
-    ctx.fillText("Press Reset", W / 2, H / 2 + 44);
+    ctx.fillText("Rematch below", W / 2, H / 2 + 44);
     ctx.textAlign = "left";
   }
 }
@@ -311,10 +361,11 @@ function loop(now) {
 }
 
 window.addEventListener("keydown", e => {
-  if (e.ctrlKey || e.altKey || e.metaKey || e.target?.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(e.target?.tagName)) return;
+  if (e.defaultPrevented || e.ctrlKey || e.altKey || e.metaKey || e.target?.closest?.("button,a[href],summary") || e.target?.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(e.target?.tagName)) return;
   const key = e.key.toLowerCase();
   if (key === "p" && !e.repeat) { setPaused(!paused); e.preventDefault(); return; }
   if (paused) return;
+  if (winner) return;
   keys.add(key);
 
   for (const f of fighters) {
@@ -338,5 +389,9 @@ document.addEventListener("visibilitychange", () => { if (document.hidden) setPa
 
 resetBtn.addEventListener("click", resetMatch);
 pauseBtn.addEventListener("click", () => setPaused(!paused));
+modeSelect.addEventListener("change", () => {
+  training = modeSelect.value === "training";
+  resetMatch();
+});
 
 requestAnimationFrame(loop);
