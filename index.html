@@ -3,28 +3,64 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0b1120" />
+  <meta name="description" content="A fast platform fighter: directional strikes, charged finishers, parries and aerial recoveries. Play against the CPU, a friend, or a practice dummy." />
   <title>Platform Fighter</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css?v=31eba523332d" />
 </head>
 <body>
   <main>
-    <h1>Platform Fighter</h1>
-
-    <canvas id="game" width="960" height="540" tabindex="0" aria-label="Platform fighter arena. Controls are below the game."></canvas>
-
-    <section class="hud">
-      <label>Mode <select id="modeSelect"><option value="match">Two players</option><option value="training">Practice</option></select></label>
-      <button id="resetBtn">New match</button>
-      <button id="pauseBtn" aria-pressed="false" title="Pause / resume (P)">Pause</button>
+    <header class="masthead">
+      <div><span class="eyebrow">LOCAL ARCADE</span><h1>Platform Fighter<span class="title-dot">.</span></h1></div>
+      <button id="soundBtn" class="quiet" aria-pressed="false" aria-label="Enable synthesized game sound">Sound off</button>
+    </header>
+    <section class="arena" aria-label="Game">
+      <canvas id="game" width="960" height="540" tabindex="0" aria-label="Platform fighter arena" aria-describedby="quickControls matchStatus"></canvas>
     </section>
-    <p id="matchStatus" role="status">Three stocks each. Knock the other player out.</p>
-    <details>
-      <summary>Controls &amp; how to play</summary>
-      <p><strong>P1:</strong> A / D move · W jump · F attack<br /><strong>P2:</strong> ← / → move · ↑ jump · / attack</p>
-      <p>Jump twice. Higher damage means stronger knockback. P pauses. Practice gives P1 a stationary opponent and unlimited respawns; choose Two players for a fresh match.</p>
+    <section class="toolbar" aria-label="Match controls">
+      <div class="setup">
+        <label>Mode<select id="modeSelect"><option value="cpu">Vs CPU</option><option value="versus">Local 2P</option><option value="training">Practice</option></select></label>
+        <label>Stage<select id="stageSelect"><option value="triad">Skyline</option><option value="duel">Crossroads</option></select></label>
+        <label id="difficultyControl">CPU<select id="difficultySelect"><option value="easy">Easy</option><option value="normal" selected>Normal</option><option value="hard">Hard</option></select></label>
+      </div>
+      <div class="match-actions"><button id="resetBtn" class="quiet">Reset</button><button id="pauseBtn" class="primary" aria-pressed="false" title="Play / pause (P)">Play</button></div>
+    </section>
+    <p id="matchStatus" class="match-status" role="status">Three stocks. Build damage, then launch your rival offstage.</p>
+    <section id="touchControls" class="touch-controls" aria-label="Player one touch controls">
+      <div class="direction-pad" aria-label="Direction">
+        <button data-action="up" class="up" aria-label="Aim up">↑</button>
+        <button data-action="left" class="left" aria-label="Move left">←</button>
+        <span class="pad-center" aria-hidden="true">◆</span>
+        <button data-action="right" class="right" aria-label="Move right">→</button>
+        <button data-action="down" class="down" aria-label="Aim down or fast fall">↓</button>
+      </div>
+      <div class="action-pad">
+        <button data-action="jump" class="jump">Jump</button><button data-action="dodge" class="dodge">Dodge</button>
+        <button data-action="light" class="light">Light</button><button data-action="strong" class="strong">Strong</button><button data-action="special" class="special">Special</button>
+      </div>
+    </section>
+    <div id="quickControls" class="quick-controls"><span><b>WASD</b> direction</span><span><b>Space</b> jump</span><span><b>F / G / H</b> attacks</span><span><b>R</b> dodge</span></div>
+    <details class="info">
+      <summary>Info &amp; moves</summary>
+      <div class="info-content">
+        <p>Win by taking three stocks. Damage makes each hit launch farther. Fast moves open a combo; charged strong attacks finish it. Every attack has a windup and recovery—bait a miss, then punish.</p>
+        <div class="info-columns">
+          <section><h2>Controls</h2><p><strong>P1</strong> WASD direction · Space jump · F light · G strong · H special · R dodge.<br /><strong>P2</strong> arrows direction · Enter jump · J light · K strong · L special · right Shift dodge.</p><p>P pauses. P2 also supports the physical / . , keys on a US keyboard. Choose a mode or stage for a fresh round. Local 2P needs a keyboard; touch supports P1 against the CPU or practice dummy.</p></section>
+          <section><h2>Movement &amp; defense</h2><p>Release jump early for a short hop. Jump again in the air. Press down while falling to fast-fall; down + jump drops through an upper platform.</p><p>Neutral dodge parries briefly. Direction + dodge rolls on the ground or air-dodges once before landing. Up + special recovers once per airtime. Move toward the stage after being launched.</p></section>
+        </div>
+        <table class="move-table"><caption>Hold a direction as you attack</caption><thead><tr><th scope="col">Attack</th><th scope="col">On the ground</th><th scope="col">In the air</th></tr></thead><tbody>
+          <tr><th scope="row">Light</th><td>Neutral jab · side strike or running dash · up launcher · down sweep</td><td>Neutral spin · forward kick · back strike · up juggle · down spike</td></tr>
+          <tr><th scope="row">Strong</th><td>Hold, then release: side finisher · up launch · down sweep. Charging leaves you open.</td><td>Same directional aerials as Light; no airborne charging.</td></tr>
+          <tr><th scope="row">Special</th><td colspan="2">Neutral bolt · side burst · up recovery · down pulse. Wait for the cooldown before repeating.</td></tr>
+        </tbody></table>
+        <p>Practice has unlimited stocks and a stationary opponent. Its prompts advance when you perform each action. CPU difficulty changes reaction speed and decisions.</p>
+        <label class="setting"><input id="motionToggle" type="checkbox" /> Reduce motion and screen shake</label>
+      </div>
     </details>
+    <noscript>This game needs JavaScript enabled.</noscript>
   </main>
-
-  <script src="game.js"></script>
+  <script src="combat.js?v=af17c63d12a5"></script>
+  <script src="cpu.js?v=dfff5fea886f"></script>
+  <script src="game.js?v=d0d272fbc97c"></script>
 </body>
 </html>

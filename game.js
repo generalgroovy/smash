@@ -1,397 +1,452 @@
+"use strict";
+
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 const resetBtn = document.getElementById("resetBtn");
 const pauseBtn = document.getElementById("pauseBtn");
 const modeSelect = document.getElementById("modeSelect");
+const stageSelect = document.getElementById("stageSelect");
+const difficultySelect = document.getElementById("difficultySelect");
+const difficultyControl = document.getElementById("difficultyControl");
 const matchStatus = document.getElementById("matchStatus");
-let paused = false;
-let training = false;
-let winner = null;
-let practiceStep = 0;
+const soundBtn = document.getElementById("soundBtn");
+const motionToggle = document.getElementById("motionToggle");
+const touchControls = document.getElementById("touchControls");
+const touchButtons = [...document.querySelectorAll("[data-action]")];
+const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
+const keys = new Set();
+const touchPointers = new Map();
+const touchPulses = new Map();
+const pendingPresses = [new Map(), new Map()];
+const pendingDirections = [null, null];
+const controlsByPlayer = [
+  { left: ["KeyA"], right: ["KeyD"], up: ["KeyW"], down: ["KeyS"], jump: ["Space"], light: ["KeyF"], strong: ["KeyG"], special: ["KeyH"], dodge: ["KeyR"] },
+  { left: ["ArrowLeft"], right: ["ArrowRight"], up: ["ArrowUp"], down: ["ArrowDown"], jump: ["Enter"], light: ["KeyJ", "Slash"], strong: ["KeyK", "Period"], special: ["KeyL", "Comma"], dodge: ["ShiftRight"] }
+];
+const actionNames = new Set(["jump", "light", "strong", "special", "dodge"]);
+const W = canvas.width;
+const H = canvas.height;
+const STEP_MS = 1000 / 60;
+let state = PlatformFighter.createGame({ mode: modeSelect.value, stage: stageSelect.value });
+let paused = true;
+let started = false;
+let previousFrame = null;
+let accumulatedTime = 0;
+let reducedMotion = motionPreference.matches;
+let motionOverridden = false;
+let soundEnabled = false;
+let audioContext = null;
+let activeVoices = 0;
+const oscillators = new Set();
+motionToggle.checked = reducedMotion;
 
 function announce(text) {
   if (matchStatus.textContent !== text) matchStatus.textContent = text;
 }
 
-function practiceProgress(step) {
-  if (!training || step !== practiceStep + 1) return;
-  practiceStep = step;
-  announce([
-    "Move with A / D.",
-    "Now press W to jump. Press again for a second jump.",
-    "Move beside P2 and press F to hit.",
-    "Hit! More damage means more knockback. Practice freely; stocks are unlimited."
-  ][practiceStep]);
+function clearInput() {
+  keys.clear(); touchPointers.clear(); touchPulses.clear();
+  for (const pending of pendingPresses) pending.clear();
+  pendingDirections.fill(null);
+  for (const button of touchButtons) button.classList.remove("held");
+  PlatformFighter.clearInputs(state);
+  FighterCPU.reset?.(state);
 }
 
-const W = canvas.width;
-const H = canvas.height;
-
-const keys = new Set();
-
-const config = {
-  gravity: 0.75,
-  friction: 0.82,
-  groundFriction: 0.72,
-  airControl: 0.65,
-  maxFallSpeed: 15,
-  blastZone: 180
-};
-
-const stage = {
-  platforms: [
-    { x: 180, y: 430, w: 600, h: 32 },
-    { x: 290, y: 330, w: 160, h: 20 },
-    { x: 510, y: 330, w: 160, h: 20 },
-    { x: 405, y: 245, w: 150, h: 18 }
-  ]
-};
-
-const fighters = [
-  {
-    name: "Blue",
-    color: "#5aa7ff",
-    x: 320,
-    y: 360,
-    vx: 0,
-    vy: 0,
-    w: 42,
-    h: 56,
-    facing: 1,
-    jumps: 2,
-    damage: 0,
-    stocks: 3,
-    attackCooldown: 0,
-    hitstun: 0,
-    controls: {
-      left: "a",
-      right: "d",
-      jump: "w",
-      attack: "f"
-    }
-  },
-  {
-    name: "Red",
-    color: "#ff6b6b",
-    x: 600,
-    y: 360,
-    vx: 0,
-    vy: 0,
-    w: 42,
-    h: 56,
-    facing: -1,
-    jumps: 2,
-    damage: 0,
-    stocks: 3,
-    attackCooldown: 0,
-    hitstun: 0,
-    controls: {
-      left: "arrowleft",
-      right: "arrowright",
-      jump: "arrowup",
-      attack: "/"
-    }
-  }
-];
-
-function resetMatch() {
-  keys.clear();
-  winner = null;
-  practiceStep = 0;
-  setPaused(false);
-  fighters[0].x = 320;
-  fighters[0].y = 360;
-  fighters[0].damage = 0;
-  fighters[0].stocks = 3;
-
-  fighters[1].x = training ? 430 : 600;
-  fighters[1].y = 360;
-  fighters[1].damage = 0;
-  fighters[1].stocks = 3;
-
-  for (const f of fighters) {
-    f.vx = 0;
-    f.vy = 0;
-    f.jumps = 2;
-    f.hitstun = 0;
-    f.attackCooldown = 0;
-    f.hitFlash = 0;
-    f.facing = f === fighters[0] ? 1 : -1;
-  }
-  resetBtn.textContent = training ? "Reset practice" : "New match";
-  announce(training ? "Move with A / D." : "Three stocks each. Knock the other player out.");
-  canvas.focus();
+function heldInputFor(index) {
+  const touch = action => index === 0 && ([...touchPointers.values()].includes(action) || touchPulses.has(action));
+  const held = action => controlsByPlayer[index][action].some(code => keys.has(code)) || touch(action);
+  return { x: Number(held("right")) - Number(held("left")), y: Number(held("down")) - Number(held("up")), jump: held("jump"), light: held("light"), strong: held("strong"), special: held("special"), dodge: held("dodge") };
 }
 
-function respawn(fighter, index) {
-  fighter.x = index === 0 ? 320 : 600;
-  fighter.y = 180;
-  fighter.vx = 0;
-  fighter.vy = 0;
-  fighter.damage = 0;
-  fighter.jumps = 2;
-  fighter.hitstun = 45;
+function latchPress(index, action, source) {
+  const held = heldInputFor(index), intent = { x: held.x, y: held.y, source };
+  if (actionNames.has(action)) pendingPresses[index].set(action, intent);
+  else pendingDirections[index] = intent;
 }
 
-function rectsOverlap(a, b) {
-  return (
-    a.x < b.x + b.w &&
-    a.x + a.w > b.x &&
-    a.y < b.y + b.h &&
-    a.y + a.h > b.y
-  );
+function inputFor(index) {
+  const input = heldInputFor(index);
+  // A press and release can both arrive between two 60 Hz steps. Sample it once,
+  // including its original direction, then let the real release reach the engine.
+  const pending = pendingPresses[index];
+  // Attack/defense intent wins over an earlier jump when a whole chord arrives
+  // between frames. These priorities match the engine's action selection.
+  const intent = pending.get("dodge") || pending.get("special") || pending.get("strong") || pending.get("light") || pending.get("jump") || pendingDirections[index];
+  if (intent) { input.x = intent.x; input.y = intent.y; }
+  for (const action of pendingPresses[index].keys()) input[action] = true;
+  return input;
 }
 
-function applyInput(f) {
-  if (f.hitstun > 0) return;
-  if (training && f === fighters[1]) return;
-
-  const accel = f.onGround ? 1.15 : 1.15 * config.airControl;
-
-  if (keys.has(f.controls.left)) {
-    practiceProgress(1);
-    f.vx -= accel;
-    f.facing = -1;
-  }
-
-  if (keys.has(f.controls.right)) {
-    practiceProgress(1);
-    f.vx += accel;
-    f.facing = 1;
-  }
-
-  if (keys.has(f.controls.attack) && f.attackCooldown <= 0) {
-    attack(f);
-  }
+function readyMessage() {
+  if (state.mode === "training") return "Practice: unlimited stocks. Press Play to begin.";
+  return state.mode === "versus" ? "Local 2P · Three stocks each. Press Play when both players are ready." : "Three stocks. Build damage, then launch your rival offstage.";
 }
 
-function jump(f) {
-  if (f.jumps <= 0) return;
-  if (training && f === fighters[1]) return;
-  practiceProgress(2);
-
-  f.vy = -14.5;
-  f.jumps--;
-  f.onGround = false;
+function setPaused(value) {
+  if (state.winner !== null) return;
+  paused = value; clearInput(); previousFrame = null; accumulatedTime = 0;
+  pauseBtn.textContent = !started ? "Play" : paused ? "Resume" : "Pause";
+  pauseBtn.setAttribute("aria-pressed", String(started && paused));
+  if (started) announce(paused ? "Paused. Resume when ready." : state.mode === "training" ? state.practiceText : "Three stocks. Light to connect; strong to finish.");
 }
 
-function attack(attacker) {
-  attacker.attackCooldown = 28;
-
-  const hitbox = {
-    x: attacker.facing === 1 ? attacker.x + attacker.w : attacker.x - 46,
-    y: attacker.y + 12,
-    w: 46,
-    h: 32
-  };
-
-  for (const victim of fighters) {
-    if (victim === attacker) continue;
-
-    if (rectsOverlap(hitbox, victim)) {
-      const knockback = 8 + victim.damage * 0.12;
-      victim.vx = attacker.facing * knockback;
-      victim.vy = -7 - victim.damage * 0.04;
-      victim.damage += 11;
-      victim.hitstun = 16;
-      victim.hitFlash = 18;
-      practiceProgress(3);
-    }
-  }
+function playPause() {
+  if (state.winner !== null) return;
+  started = true; setPaused(!paused);
+  if (!paused) { canvas.focus({ preventScroll: true }); resumeAudio(); }
 }
 
-function physics(f) {
-  f.onGround = false;
-
-  f.vy += config.gravity;
-  f.vy = Math.min(f.vy, config.maxFallSpeed);
-
-  f.x += f.vx;
-  f.y += f.vy;
-
-  for (const p of stage.platforms) {
-    const falling = f.vy >= 0;
-    const wasAbove = f.y + f.h - f.vy <= p.y;
-
-    if (
-      falling &&
-      wasAbove &&
-      f.x + f.w > p.x &&
-      f.x < p.x + p.w &&
-      f.y + f.h >= p.y &&
-      f.y + f.h <= p.y + p.h + 18
-    ) {
-      f.y = p.y - f.h;
-      f.vy = 0;
-      f.onGround = true;
-      f.jumps = 2;
-    }
-  }
-
-  f.vx *= f.onGround ? config.groundFriction : config.friction;
-
-  if (Math.abs(f.vx) < 0.05) f.vx = 0;
-
-  if (
-    f.x < -config.blastZone ||
-    f.x > W + config.blastZone ||
-    f.y > H + config.blastZone
-  ) {
-    const index = fighters.indexOf(f);
-    if (!training) f.stocks--;
-    if (f.stocks > 0) respawn(f, index);
-  }
-
-  if (f.attackCooldown > 0) f.attackCooldown--;
-  if (f.hitstun > 0) f.hitstun--;
-  if (f.hitFlash > 0) f.hitFlash--;
+function resetMatch(play = false) {
+  clearInput();
+  state = PlatformFighter.createGame({ mode: modeSelect.value, stage: stageSelect.value });
+  started = false; pauseBtn.disabled = false;
+  resetBtn.textContent = state.mode === "training" ? "Reset practice" : "Reset";
+  difficultyControl.hidden = state.mode !== "cpu"; touchControls.hidden = state.mode === "versus";
+  setPaused(true); announce(readyMessage());
+  if (play) playPause();
 }
 
 function update() {
-  if (winner) return;
-  for (const f of fighters) {
-    if (f.stocks <= 0) continue;
-    applyInput(f);
-    physics(f);
+  if (paused || !started || state.winner !== null) return;
+  const p2 = state.mode === "cpu" ? FighterCPU.input(state, 1, difficultySelect.value) : inputFor(1);
+  PlatformFighter.step(state, [inputFor(0), p2]);
+  for (const pending of pendingPresses) pending.clear();
+  pendingDirections.fill(null);
+  for (const [action, frames] of touchPulses) {
+    if (frames <= 1) touchPulses.delete(action); else touchPulses.set(action, frames - 1);
   }
-  if (!training && fighters.some(f => f.stocks <= 0)) {
-    winner = fighters.every(f => f.stocks <= 0) ? "Draw" : fighters[0].stocks <= 0 ? "Player 2 wins" : "Player 1 wins";
-    keys.clear();
-    resetBtn.textContent = "Rematch";
-    announce(`${winner}. Choose Rematch to play again.`);
-    resetBtn.focus();
+  syncTouchButtons(); playEvents(state.events || []);
+  if (state.winner !== null) {
+    clearInput(); paused = true; accumulatedTime = 0;
+    resetBtn.textContent = "Rematch"; pauseBtn.textContent = "Finished"; pauseBtn.disabled = true;
+    announce(`${winnerText()}. Choose Rematch to play again.`); resetBtn.focus({ preventScroll: true });
+  } else if (state.mode === "training") announce(state.practiceText || "Practice freely. Stocks are unlimited.");
+}
+
+function winnerText() {
+  if (state.winner === "draw") return "Double knockout";
+  return state.winner === 0 ? "Player 1 wins" : state.mode === "cpu" ? "CPU wins" : "Player 2 wins";
+}
+
+function roundedBox(x, y, width, height, radius = 8) {
+  ctx.beginPath(); ctx.roundRect(x, y, width, height, radius);
+}
+
+function polygon(points) {
+  ctx.beginPath(); points.forEach(([x, y], index) => index ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.closePath();
+}
+
+function drawBackdrop() {
+  const gradient = ctx.createLinearGradient(0, 0, 0, H);
+  gradient.addColorStop(0, "#111a30"); gradient.addColorStop(0.6, "#18364a"); gradient.addColorStop(1, "#0d1a2d");
+  ctx.fillStyle = gradient; ctx.fillRect(0, 0, W, H);
+  const haze = ctx.createRadialGradient(W / 2, 245, 0, W / 2, 245, 380);
+  haze.addColorStop(0, "#72cfbe22"); haze.addColorStop(1, "#72cfbe00"); ctx.fillStyle = haze; ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = "#94d6d911"; ctx.lineWidth = 1;
+  for (let radius = 130; radius <= 330; radius += 70) { ctx.beginPath(); ctx.arc(480, 253, radius, Math.PI, Math.PI * 2); ctx.stroke(); }
+  for (let i = 0; i < 36; i++) {
+    const x = (i * 137 + 41) % W, y = 100 + (i * 71) % 270;
+    ctx.fillStyle = i % 4 ? "#c1dbf344" : "#93ffe477"; ctx.fillRect(x, y, i % 4 ? 1.5 : 2.5, i % 4 ? 1.5 : 2.5);
   }
+  for (let i = 0; i < 8; i++) {
+    const x = i * 150 - 70, y = 345 + (i * 37) % 120;
+    ctx.fillStyle = i % 2 ? "#14293c" : "#132639";
+    polygon([[x, H], [x + 15, y + 60], [x + 45, y], [x + 96, y + 10], [x + 140, H]]); ctx.fill();
+    ctx.strokeStyle = "#39617b33"; ctx.beginPath(); ctx.moveTo(x + 45, y); ctx.lineTo(x + 62, H); ctx.stroke();
+  }
+  ctx.fillStyle = "#08142477"; ctx.fillRect(0, H - 25, W, 25);
 }
 
 function drawStage() {
-  ctx.fillStyle = "#27304a";
-  for (const p of stage.platforms) {
-    ctx.fillRect(p.x, p.y, p.w, p.h);
-    ctx.fillStyle = "#39466c";
-    ctx.fillRect(p.x, p.y, p.w, 5);
-    ctx.fillStyle = "#27304a";
+  for (const [index, platform] of state.platforms.entries()) {
+    const { x, y, w, h } = platform;
+    if (index === 0) {
+      const stone = ctx.createLinearGradient(0, y, 0, y + 98);
+      stone.addColorStop(0, "#283f52"); stone.addColorStop(1, "#102135"); ctx.fillStyle = stone;
+      polygon([[x + 12, y + h], [x + w - 12, y + h], [x + w - 58, y + 66], [x + w * .68, y + 85], [x + w / 2, y + 107], [x + w * .23, y + 77], [x + 46, y + 61]]); ctx.fill();
+      ctx.strokeStyle = "#638a9633"; ctx.lineWidth = 2;
+      for (let j = 1; j < 6; j++) { ctx.beginPath(); ctx.moveTo(x + w * j / 6, y + h); ctx.lineTo(x + w * j / 6 + (j % 2 ? 25 : -20), y + 65); ctx.stroke(); }
+    }
+    ctx.fillStyle = index === 0 ? "#314c5e" : "#263e54"; roundedBox(x, y, w, h, 4); ctx.fill();
+    ctx.fillStyle = "#b1f5e5"; ctx.fillRect(x + 4, y, w - 8, 3);
+    ctx.fillStyle = "#5c988d"; ctx.fillRect(x + 7, y + 4, w - 14, 3);
+    ctx.fillStyle = "#07142288"; ctx.fillRect(x + 8, y + h - 5, w - 16, 3);
+    ctx.fillStyle = "#a9e6dc66";
+    for (let j = 20; j < w - 12; j += 34) ctx.fillRect(x + j, y + h - 9, 9, 2);
+    if (index > 0) { ctx.fillStyle = "#7ae4cf66"; polygon([[x + w / 2 - 9, y + h + 3], [x + w / 2 + 9, y + h + 3], [x + w / 2, y + h + 12]]); ctx.fill(); }
   }
 }
 
-function drawFighter(f) {
-  if (f.stocks <= 0) return;
+function movePhase(fighter) {
+  if (!fighter.move) return null;
+  const data = PlatformFighter.MOVES[fighter.move.id];
+  if (!data) return null;
+  const frame = fighter.move.frame || 0;
+  return { data, windup: fighter.move.charging || frame < data.startup, active: !fighter.move.charging && frame >= data.startup && frame < data.startup + data.active };
+}
 
-  ctx.fillStyle = f.color;
-  ctx.fillRect(f.x, f.y, f.w, f.h);
-
-  ctx.font = "bold 16px system-ui";
-  ctx.textAlign = "center";
-  ctx.fillStyle = "#ffffff";
-  ctx.fillText(f === fighters[0] ? "P1" : "P2", f.x + f.w / 2, f.y - 10);
-  if (f.hitFlash > 0) {
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = "#ffffff";
-    ctx.strokeRect(f.x - 4, f.y - 4, f.w + 8, f.h + 8);
-    ctx.fillText("+11", f.x + f.w / 2, f.y - 30);
+function drawAttack(fighter, phase) {
+  if (!phase) return;
+  const centerX = fighter.x + fighter.w / 2, centerY = fighter.y + fighter.h / 2;
+  const color = phase.data.color || fighter.color;
+  ctx.save();
+  if (fighter.move.charging) {
+    const amount = Math.min(1, (fighter.move.charge || 0) / 60);
+    ctx.strokeStyle = "#ffda8d"; ctx.lineWidth = 3 + amount * 3;
+    ctx.beginPath(); ctx.arc(centerX, centerY, 37 + amount * 14, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(.08, amount)); ctx.stroke();
+    ctx.font = "bold 17px system-ui"; ctx.fillStyle = "#ffe3a8"; ctx.textAlign = "center";
+    ctx.fillText(`${Math.round(amount * 100)}%`, centerX, fighter.y - 25);
   }
-  ctx.textAlign = "left";
+  if (phase.windup) {
+    ctx.globalAlpha = .5; ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.beginPath();
+    ctx.arc(centerX + fighter.facing * 14, centerY, 30, fighter.facing > 0 ? -.9 : Math.PI - .9, fighter.facing > 0 ? .9 : Math.PI + .9); ctx.stroke();
+  }
+  if (phase.active) {
+    for (const box of PlatformFighter.attackBoxes(fighter)) {
+      ctx.save(); ctx.translate(box.x + box.w / 2, box.y + box.h / 2);
+      ctx.fillStyle = color; ctx.strokeStyle = "#f1fff8"; ctx.lineWidth = 2; ctx.globalAlpha = .7;
+      const width = box.w / 2, height = box.h / 2, shape = phase.data.shape;
+      if (shape === "ring" || shape === "wave") {
+        ctx.beginPath(); ctx.ellipse(0, 0, width, height, 0, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = .18; ctx.fill();
+      } else if (shape === "spike" || shape === "rise") {
+        const direction = shape === "spike" ? 1 : -1;
+        polygon([[-width, -height * direction], [width, -height * direction], [0, height * direction]]); ctx.fill(); ctx.stroke();
+      } else {
+        ctx.scale(fighter.facing, 1); ctx.beginPath(); ctx.moveTo(-width, -height);
+        ctx.quadraticCurveTo(width * 1.4, -height * .5, width, height); ctx.quadraticCurveTo(width * .15, height * .3, -width, -height); ctx.fill(); ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
+  ctx.restore();
+}
 
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(f.x + (f.facing === 1 ? 27 : 8), f.y + 14, 8, 8);
+function drawFighter(fighter) {
+  if (fighter.stocks <= 0 && state.mode !== "training") return;
+  const phase = movePhase(fighter), centerX = fighter.x + fighter.w / 2, bottomY = fighter.y + fighter.h;
+  if (centerX < 15 || centerX > W - 15 || bottomY < 100 || fighter.y > H - 10) {
+    const x = Math.max(22, Math.min(W - 22, centerX)), y = Math.max(116, Math.min(H - 24, bottomY - 25));
+    ctx.strokeStyle = fighter.color; ctx.lineWidth = 2; ctx.fillStyle = "#102036ee";
+    ctx.beginPath(); ctx.arc(x, y, 18, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    const angle = Math.atan2(bottomY - 25 - y, centerX - x);
+    ctx.save(); ctx.translate(x, y); ctx.rotate(angle); ctx.fillStyle = fighter.color;
+    polygon([[24, 0], [18, -5], [18, 5]]); ctx.fill(); ctx.restore();
+    ctx.font = "bold 14px system-ui"; ctx.textAlign = "center"; ctx.fillStyle = "#fff"; ctx.fillText(`P${fighter.id + 1}`, x, y + 5);
+  }
+  ctx.save();
+  if (fighter.invuln > 0) ctx.globalAlpha = reducedMotion ? .65 : state.frame % 8 < 4 ? .55 : .85;
+  // Every pose follows engine state; drawing never changes collision or velocity.
+  ctx.translate(centerX, bottomY);
+  const lean = fighter.hitstun > 0 ? Math.max(-.45, Math.min(.45, fighter.vx * .035)) : Math.max(-.18, Math.min(.18, fighter.vx * .025));
+  if (!reducedMotion) ctx.rotate(lean);
+  ctx.scale(fighter.facing, 1);
+  const stride = fighter.onGround && Math.abs(fighter.vx) > .7 && !reducedMotion ? Math.sin(state.frame * .38) * 7 : 0;
+  const crouch = phase?.windup && !fighter.move.charging ? 4 : 0, reach = phase?.active ? 22 : phase?.windup ? -6 : 5;
+  ctx.fillStyle = "#080f22";
+  roundedBox(-15 - stride * .5, -17 + crouch, 12, 18 - crouch, 3); ctx.fill(); roundedBox(3 + stride * .5, -17 + crouch, 12, 18 - crouch, 3); ctx.fill();
+  ctx.fillStyle = fighter.color;
+  roundedBox(-18 - stride * .5, -7, 15, 7, 2); ctx.fill(); roundedBox(3 + stride * .5, -7, 18, 7, 2); ctx.fill();
+  ctx.globalAlpha *= .85;
+  polygon([[-12, -39 + crouch], [-36 - Math.abs(fighter.vx) * 1.2, -30 + crouch], [-23, -25 + crouch], [-8, -31 + crouch]]); ctx.fill();
+  ctx.globalAlpha = fighter.invuln > 0 ? .7 : 1;
+  ctx.fillStyle = fighter.hitFlash > 0 ? "#efffff" : fighter.color;
+  polygon([[-14, -39 + crouch], [12, -39 + crouch], [18, -19 + crouch], [9, -12 + crouch], [-11, -14 + crouch], [-18, -29 + crouch]]); ctx.fill();
+  ctx.fillStyle = "#172840"; polygon([[-8, -36 + crouch], [8, -36 + crouch], [10, -21 + crouch], [-6, -20 + crouch]]); ctx.fill();
+  ctx.fillStyle = "#eaffff"; polygon([[0, -33 + crouch], [5, -28 + crouch], [0, -23 + crouch], [-5, -28 + crouch]]); ctx.fill();
+  ctx.fillStyle = fighter.hitFlash > 0 ? "#fff" : fighter.color; roundedBox(-12, -54 + crouch, 26, 20, 7); ctx.fill();
+  ctx.fillStyle = "#0d2034"; roundedBox(-4, -49 + crouch, 22, 8, 3); ctx.fill();
+  ctx.fillStyle = "#edfff8"; ctx.fillRect(4, -47 + crouch, 11, 3);
+  ctx.strokeStyle = "#183449"; ctx.lineWidth = 9; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(12, -32 + crouch); ctx.lineTo(19 + reach, -24 + crouch); ctx.stroke();
+  ctx.fillStyle = fighter.hitFlash > 0 ? "#fff" : fighter.color; roundedBox(14 + reach, -30 + crouch, 14, 13, 4); ctx.fill(); ctx.restore();
+  if (fighter.defense) {
+    ctx.save(); ctx.strokeStyle = fighter.defense.type === "parry" ? "#fff2a6" : "#b9e5ff"; ctx.lineWidth = fighter.defense.type === "parry" ? 4 : 2;
+    ctx.globalAlpha = .65; ctx.beginPath(); ctx.ellipse(centerX, fighter.y + 28, 31, 38, 0, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+  }
+  ctx.textAlign = "center"; ctx.font = "bold 15px system-ui"; ctx.fillStyle = fighter.color;
+  ctx.fillText(fighter.id === 0 ? "P1" : state.mode === "cpu" ? "CPU" : state.mode === "training" ? "DUMMY" : "P2", centerX, fighter.y - 10);
+  drawAttack(fighter, phase);
+}
 
-  if (f.attackCooldown > 16) {
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 3;
-    const ax = f.facing === 1 ? f.x + f.w + 8 : f.x - 8;
-    ctx.beginPath();
-    ctx.arc(ax, f.y + 28, 20, 0, Math.PI * 2);
-    ctx.stroke();
+function drawProjectiles() {
+  for (const projectile of state.projectiles || []) {
+    ctx.save(); ctx.translate(projectile.x + projectile.w / 2, projectile.y + projectile.h / 2); ctx.scale(projectile.vx < 0 ? -1 : 1, 1);
+    ctx.fillStyle = projectile.color || "#bbadff"; ctx.globalAlpha = .3;
+    polygon([[-30, -6], [10, -8], [16, 0], [10, 8], [-30, 6], [-16, 0]]); ctx.fill();
+    ctx.globalAlpha = 1; polygon([[-10, 0], [0, -7], [13, 0], [0, 7]]); ctx.fill();
+    ctx.fillStyle = "#fff"; ctx.fillRect(-1, -2, 7, 4); ctx.restore();
+  }
+}
+
+function drawEffects() {
+  for (const effect of state.effects || []) {
+    const progress = 1 - effect.life / (effect.maxLife || 1);
+    ctx.save(); ctx.translate(effect.x, effect.y); ctx.globalAlpha = Math.max(0, 1 - progress);
+    ctx.strokeStyle = effect.color || "#e1fff4"; ctx.fillStyle = ctx.strokeStyle; ctx.lineWidth = effect.type === "ko" ? 4 : 2;
+    if (effect.type === "hit" || effect.type === "parry") {
+      const radius = reducedMotion ? 23 : 14 + progress * 40;
+      for (let i = 0; i < 7; i++) {
+        const angle = i * Math.PI * 2 / 7; ctx.beginPath(); ctx.moveTo(Math.cos(angle) * radius * .45, Math.sin(angle) * radius * .45); ctx.lineTo(Math.cos(angle) * radius, Math.sin(angle) * radius); ctx.stroke();
+      }
+    } else {
+      const radius = effect.type === "ko" ? 30 + progress * 100 : 8 + progress * 25;
+      ctx.beginPath(); ctx.ellipse(0, 0, radius, effect.type === "land" ? radius * .2 : radius, 0, 0, Math.PI * 2); ctx.stroke();
+    }
+    if (effect.text) { ctx.font = "bold 19px system-ui"; ctx.textAlign = "center"; ctx.fillText(effect.text, 0, -24 - (reducedMotion ? 0 : progress * 18)); }
+    ctx.restore();
   }
 }
 
 function drawHud() {
-  ctx.font = "22px system-ui";
-  ctx.fillStyle = "#ffffff";
-  ctx.fillText(`P1 ${fighters[0].damage}% · ${training ? "Practice" : "Stocks: " + fighters[0].stocks}`, 28, 38);
-  ctx.fillText(`P2 ${fighters[1].damage}% · ${training ? "Practice" : "Stocks: " + fighters[1].stocks}`, W - 300, 38);
-
-  if (winner) {
-    ctx.fillStyle = "rgba(0,0,0,0.55)";
-    ctx.fillRect(0, 0, W, H);
-
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "48px system-ui";
-    ctx.textAlign = "center";
-    ctx.fillText(winner, W / 2, H / 2);
-    ctx.font = "22px system-ui";
-    ctx.fillText("Rematch below", W / 2, H / 2 + 44);
-    ctx.textAlign = "left";
+  for (const fighter of state.fighters) {
+    const x = fighter.id === 0 ? 24 : W - 258;
+    ctx.fillStyle = "#0b1728dd"; roundedBox(x, 18, 234, 81, 9); ctx.fill();
+    ctx.fillStyle = fighter.color; roundedBox(x, 18, 4, 81, 2); ctx.fill();
+    ctx.font = "bold 14px system-ui"; ctx.textAlign = "left"; ctx.fillStyle = "#d1dfed";
+    ctx.fillText(fighter.id === 0 ? "PLAYER 1" : state.mode === "cpu" ? `CPU · ${difficultySelect.value.toUpperCase()}` : state.mode === "training" ? "PRACTICE DUMMY" : "PLAYER 2", x + 17, 41);
+    ctx.font = "800 39px system-ui"; ctx.fillStyle = fighter.damage >= 100 ? "#ff8e83" : fighter.damage >= 60 ? "#ffd488" : "#f0f7ff";
+    ctx.fillText(`${Math.round(fighter.damage)}%`, x + 15, 83); ctx.fillStyle = fighter.color;
+    if (state.mode === "training") { ctx.font = "bold 29px system-ui"; ctx.fillText("∞", x + 185, 80); }
+    else for (let i = 0; i < 3; i++) {
+      ctx.globalAlpha = i < fighter.stocks ? 1 : .16;
+      polygon([[x + 173 + i * 19, 67], [x + 180 + i * 19, 75], [x + 173 + i * 19, 83], [x + 166 + i * 19, 75]]); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    if (fighter.combo >= 2 && fighter.comboTimer > 0) { ctx.font = "bold 24px system-ui"; ctx.fillStyle = "#fff0b2"; ctx.fillText(`${fighter.combo} HIT`, x + 12, 127); }
+    if (fighter.labelTimer > 0 && fighter.lastMove) {
+      const definition = PlatformFighter.MOVES[fighter.lastMove];
+      ctx.font = "bold 15px system-ui"; ctx.fillStyle = "#b9d7e6"; ctx.textAlign = fighter.id === 0 ? "left" : "right";
+      ctx.fillText(definition?.name || fighter.lastMove, fighter.id === 0 ? x + 12 : x + 220, fighter.combo >= 2 && fighter.comboTimer > 0 ? 148 : 124);
+    }
   }
+  ctx.textAlign = "center"; ctx.fillStyle = "#7799ad"; ctx.font = "bold 12px system-ui";
+  ctx.fillText((PlatformFighter.STAGES[state.stageId]?.name || state.stageId || "ARENA").toUpperCase(), W / 2, 40);
+  ctx.fillStyle = "#acd1d6"; ctx.font = "bold 18px system-ui"; ctx.fillText(state.mode === "training" ? "PRACTICE" : "3 STOCK", W / 2, 66);
+}
+
+function drawOverlay() {
+  if (!paused && state.winner === null) return;
+  ctx.fillStyle = "#061120a8"; ctx.fillRect(0, 108, W, H - 108); ctx.textAlign = "center";
+  ctx.fillStyle = "#91f0d9"; ctx.font = "bold 13px system-ui";
+  ctx.fillText(state.winner !== null ? "MATCH COMPLETE" : !started ? "READY WHEN YOU ARE" : "TAKE A BREATHER", W / 2, 225);
+  ctx.fillStyle = "#f0f8ff"; ctx.font = "800 49px system-ui";
+  ctx.fillText(state.winner !== null ? winnerText() : !started ? state.mode === "training" ? "Find your flow." : "Make your move." : "Paused", W / 2, 284);
+  ctx.fillStyle = "#b1c8db"; ctx.font = "19px system-ui";
+  ctx.fillText(state.winner !== null ? "Rematch below" : !started ? "Play below · Light / Strong / Special" : "Resume below or press P", W / 2, 324);
 }
 
 function draw() {
-  ctx.clearRect(0, 0, W, H);
-
-  drawStage();
-
-  for (const f of fighters) {
-    drawFighter(f);
+  ctx.clearRect(0, 0, W, H); drawBackdrop(); ctx.save();
+  if (!reducedMotion && !paused && state.shake > 0) {
+    const shake = Math.min(7, state.shake); ctx.translate(Math.sin(state.frame * 2.4) * shake, Math.cos(state.frame * 1.8) * shake * .6);
   }
-
-  drawHud();
-}
-
-let previousFrame = null;
-let accumulatedTime = 0;
-const STEP_MS = 1000 / 60;
-
-function setPaused(value) {
-  paused = value;
-  keys.clear();
-  previousFrame = null;
-  accumulatedTime = 0;
-  pauseBtn.textContent = paused ? "Resume" : "Pause";
-  pauseBtn.setAttribute("aria-pressed", String(paused));
+  drawStage(); for (const fighter of state.fighters) drawFighter(fighter);
+  drawProjectiles(); drawEffects(); ctx.restore(); drawHud(); drawOverlay();
 }
 
 function loop(now) {
   if (!paused && previousFrame !== null) accumulatedTime += Math.min(100, Math.max(0, now - previousFrame));
   previousFrame = now;
-  while (accumulatedTime >= STEP_MS) {
-    update();
-    accumulatedTime -= STEP_MS;
-  }
-  draw();
-  requestAnimationFrame(loop);
+  while (!paused && accumulatedTime + .0001 >= STEP_MS) { accumulatedTime -= STEP_MS; update(); }
+  draw(); requestAnimationFrame(loop);
 }
 
-window.addEventListener("keydown", e => {
-  if (e.defaultPrevented || e.ctrlKey || e.altKey || e.metaKey || e.target?.closest?.("button,a[href],summary") || e.target?.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(e.target?.tagName)) return;
-  const key = e.key.toLowerCase();
-  if (key === "p" && !e.repeat) { setPaused(!paused); e.preventDefault(); return; }
-  if (paused) return;
-  if (winner) return;
-  keys.add(key);
+const controlledCodes = new Set(controlsByPlayer.flatMap(player => Object.values(player).flat()));
+const keyFallback = { a: "KeyA", d: "KeyD", w: "KeyW", s: "KeyS", " ": "Space", f: "KeyF", g: "KeyG", h: "KeyH", r: "KeyR", p: "KeyP", j: "KeyJ", k: "KeyK", l: "KeyL", arrowleft: "ArrowLeft", arrowright: "ArrowRight", arrowup: "ArrowUp", arrowdown: "ArrowDown", enter: "Enter", "/": "Slash", ".": "Period", ",": "Comma", escape: "Escape" };
+function eventCode(event) { return event.code || keyFallback[String(event.key).toLowerCase()] || ""; }
+function isFormTarget(target) { return target?.isContentEditable || target?.closest?.("button,a[href],summary,input,textarea,select"); }
 
-  for (const f of fighters) {
-    if (key === f.controls.jump && !e.repeat && fighters.every(player => player.stocks > 0)) {
-      jump(f);
-    }
+window.addEventListener("keydown", event => {
+  if (event.defaultPrevented || event.ctrlKey || event.altKey || event.metaKey || isFormTarget(event.target)) return;
+  const code = eventCode(event);
+  if (code === "KeyP" || code === "Escape") {
+    if (!event.repeat) { if (code === "Escape") setPaused(true); else playPause(); } event.preventDefault(); return;
   }
-
-  if (
-    ["arrowleft", "arrowright", "arrowup"].includes(key)
-  ) {
-    e.preventDefault();
+  if (!controlledCodes.has(code)) return;
+  event.preventDefault();
+  if (event.repeat || paused || !started || state.winner !== null) return;
+  const alreadyHeld = keys.has(code);
+  keys.add(code);
+  if (!alreadyHeld) for (let index = 0; index < 2; index++) {
+    const action = Object.keys(controlsByPlayer[index]).find(action => controlsByPlayer[index][action].includes(code));
+    if (action) latchPress(index, action, "keyboard");
   }
 });
-
-window.addEventListener("keyup", e => {
-  keys.delete(e.key.toLowerCase());
-});
+window.addEventListener("keyup", event => { keys.delete(eventCode(event)); });
 window.addEventListener("blur", () => setPaused(true));
 document.addEventListener("visibilitychange", () => { if (document.hidden) setPaused(true); });
 
-resetBtn.addEventListener("click", resetMatch);
-pauseBtn.addEventListener("click", () => setPaused(!paused));
-modeSelect.addEventListener("change", () => {
-  training = modeSelect.value === "training";
-  resetMatch();
-});
+function syncTouchButtons() {
+  for (const button of touchButtons) button.classList.toggle("held", [...touchPointers.values()].includes(button.dataset.action) || touchPulses.has(button.dataset.action));
+}
+for (const button of touchButtons) {
+  button.addEventListener("pointerdown", event => {
+    if (event.button !== 0 || paused || !started || state.winner !== null) return;
+    event.preventDefault(); button.setPointerCapture(event.pointerId); touchPointers.set(event.pointerId, button.dataset.action);
+    latchPress(0, button.dataset.action, event.pointerId); syncTouchButtons();
+  });
+  const release = (event, cancelled = false) => {
+    const action = touchPointers.get(event.pointerId);
+    touchPointers.delete(event.pointerId);
+    if (cancelled && action) {
+      if (pendingPresses[0].get(action)?.source === event.pointerId) pendingPresses[0].delete(action);
+      if (pendingDirections[0]?.source === event.pointerId) pendingDirections[0] = null;
+    }
+    syncTouchButtons();
+  };
+  button.addEventListener("pointerup", event => release(event));
+  button.addEventListener("pointercancel", event => release(event, true));
+  button.addEventListener("lostpointercapture", event => release(event, true));
+  button.addEventListener("click", event => {
+    // Keyboard / assistive activation is a short held input; pointer holds use capture.
+    if (event.detail === 0 && !paused && started && state.winner === null) {
+      touchPulses.set(button.dataset.action, 1); latchPress(0, button.dataset.action, "activation"); syncTouchButtons();
+    }
+  });
+}
 
-requestAnimationFrame(loop);
+function resumeAudio() {
+  if (!soundEnabled || !audioContext) return;
+  const result = audioContext.resume(); if (result?.catch) result.catch(() => { soundEnabled = false; updateSoundLabel(); });
+}
+function updateSoundLabel() {
+  soundBtn.textContent = soundEnabled ? "Sound on" : "Sound off"; soundBtn.setAttribute("aria-pressed", String(soundEnabled));
+  soundBtn.setAttribute("aria-label", soundEnabled ? "Mute synthesized game sound" : "Enable synthesized game sound");
+}
+function playEvents(events) {
+  if (!soundEnabled || !audioContext || audioContext.state !== "running") return;
+  const notes = { hit: [210, 60, .1, "triangle"], parry: [780, 1450, .13, "sine"], ko: [240, 42, .3, "sawtooth"], jump: [210, 470, .07, "sine"], attack: [170, 90, .045, "triangle"], win: [400, 800, .35, "sine"], tech: [560, 920, .09, "sine"] };
+  for (const event of events) {
+    if (!notes[event.type] || activeVoices >= 10) continue;
+    const [from, to, duration, type] = notes[event.type], oscillator = audioContext.createOscillator(), gain = audioContext.createGain(), now = audioContext.currentTime;
+    oscillator.type = type; oscillator.frequency.setValueAtTime(from, now); oscillator.frequency.exponentialRampToValueAtTime(to, now + duration);
+    gain.gain.setValueAtTime(.0001, now); gain.gain.exponentialRampToValueAtTime(event.type === "ko" ? .055 : .035, now + .005); gain.gain.exponentialRampToValueAtTime(.0001, now + duration);
+    oscillator.connect(gain); gain.connect(audioContext.destination); activeVoices++; oscillators.add(oscillator);
+    oscillator.onended = () => { activeVoices--; oscillators.delete(oscillator); oscillator.disconnect(); gain.disconnect(); };
+    oscillator.start(); oscillator.stop(now + duration + .02);
+  }
+}
+soundBtn.addEventListener("click", () => {
+  soundEnabled = !soundEnabled;
+  if (soundEnabled) {
+    const AudioAPI = window.AudioContext || window.webkitAudioContext;
+    if (!AudioAPI) { soundEnabled = false; announce("Game sound is unavailable in this browser."); }
+    else {
+      try { audioContext ||= new AudioAPI(); resumeAudio(); }
+      catch { soundEnabled = false; announce("Game sound is unavailable in this browser."); }
+    }
+  } else {
+    // Stop current notes rather than freezing them for playback on the next unmute.
+    for (const oscillator of oscillators) oscillator.stop();
+  }
+  updateSoundLabel();
+});
+motionToggle.addEventListener("change", () => { motionOverridden = true; reducedMotion = motionToggle.checked; });
+motionPreference.addEventListener?.("change", event => { if (!motionOverridden) { reducedMotion = event.matches; motionToggle.checked = reducedMotion; } });
+resetBtn.addEventListener("click", () => resetMatch(true));
+pauseBtn.addEventListener("click", playPause);
+modeSelect.addEventListener("change", () => resetMatch());
+stageSelect.addEventListener("change", () => resetMatch());
+difficultySelect.addEventListener("change", () => resetMatch());
+resetMatch(); requestAnimationFrame(loop);

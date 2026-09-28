@@ -1,44 +1,89 @@
 # Platform Fighter
 
-A small local two-player platform fighter for one keyboard. Build the opponent's damage, knock them beyond the arena and take all three stocks. There is no AI opponent or online multiplayer.
+[Play in your browser](https://generalgroovy.github.io/smash/).
 
-## Run
+Build damage, open a combo and launch your rival beyond the arena. Take three
+stocks to win. Play against a CPU, share a keyboard with a friend, or learn in
+Practice. Two stages and one shared moveset keep the contest about movement,
+spacing and timing. No installation, account or online session is required.
 
-Serve this directory with Python 3:
-
-```sh
-python -m http.server 8080
-```
-
-Open `http://localhost:8080`. The game is plain HTML, CSS and JavaScript with no build or install step and no remote game service.
+Choose your mode and stage, then **Play**. Start with **Easy** CPU or **Practice**.
+P pauses; changing mode or stage prepares a fresh match. Losing focus pauses
+automatically. A completed match freezes and focuses **Rematch**.
 
 ## Controls
 
-| Action | Blue | Red |
-| --- | --- | --- |
-| Move | A / D | Left / right arrows |
-| Jump, including second jump | W | Up arrow |
-| Attack | F | / |
+| Action | P1 — Nova | P2 — Ember |
+|---|---|---|
+| Direction / aim | W A S D | Arrow keys |
+| Jump / double jump | Space | Enter |
+| Light attack | F | J |
+| Strong attack | G | K |
+| Special | H | L |
+| Dodge / parry | R | Right Shift |
 
-Jump requires a new press; keyboard repeat does not spend the second jump. **P** or the **Pause/Resume** button pauses both players. Switching away pauses automatically; returning does not resume until you choose to continue. **New match** starts fresh; after a win, **Rematch** receives focus. A completed match freezes until restarted.
+**Jump is now separate from aiming up.** This lets you launch an opponent upward
+without jumping yourself. Phone controls operate P1 against the CPU or practice
+dummy. Local two-player mode needs a keyboard; gamepads and online play are not
+implemented. Some keyboards cannot register every simultaneous key combination.
+The physical Slash, Period and Comma keys also retain the previous P2 attack
+bindings; J/K/L avoid punctuation-layout differences.
 
-Both players share the keyboard. Some keyboards cannot report every simultaneous chord; that is a hardware limitation. Touch/gamepad bindings are not implemented.
+## Find your flow
 
-## Practice
+- **Open:** neutral light is a quick jab. Side light has reach; running side light
+  becomes a dash strike. Down light sweeps; up light launches for a follow-up.
+- **Follow:** jump after a low-damage up-light, then use up-light in the air for
+  a juggle. Air attacks also include an orbit, forward slash, back kick and
+  downward meteor. Airborne strong uses the same directional aerial attacks.
+- **Finish:** hold and release Strong on the ground. Side launches outward,
+  up launches vertically and down covers both sides. Charging is vulnerable;
+  a miss leaves recovery time. Repeated use slightly weakens the same move.
+- **Mix:** neutral Special fires a bolt; side bursts forward; up rises to recover;
+  down repels nearby opponents. Specials have cooldowns. Air burst and up recovery
+  each have one use until landing, so plan the return trip.
+- **Defend:** neutral Dodge has a brief parry window and long recovery if mistimed.
+  Direction + Dodge rolls on the ground or air-dodges once before landing.
+  A downward diagonal air dodge can land into a slide. A timed dodge before a
+  hard landing softens the impact. Holding a direction influences launch angle.
 
-Choose **Practice** for a stationary P2 target and unlimited respawns. The short guide advances when you actually move, jump and land a hit. P1/P2 labels distinguish fighters without relying on color; a brief outline and +11 cue mark a landed hit. Choose **Two players** to start a normal three-stock match. Full control reference is under **Controls & how to play**.
+Release jump early for a short hop. Press down while descending to fast-fall;
+down + jump drops through an upper platform. Attacks have startup, active and
+recovery phases. Inputs buffered near recovery keep their chosen direction.
+Hold jump for height; a new press is required for the second jump.
 
-## Progress and timing
+Practice has unlimited stocks and a stationary target. Prompts observe movement,
+jumping, landed light/strong/special attacks and defense. Reset practice to put
+both fighters back in position. Full reference stays under **Info & moves**.
 
-Matches are memory-only. Refresh, close or restart discards the current match; there are no accounts, saved scores or network sessions. Simulation advances in fixed 60 Hz steps, separately from display refresh. Pause/resume clears accumulated time so returning after a long absence does not fast-forward the match.
+CPU difficulty changes observation delay and decision mistakes, never damage or
+movement stats. It uses the same attacks and recovery limits. Sound is opt-in;
+reduced motion disables screen shake and reduces visual effects.
 
-## Development
+## Run and develop
+
+Serve the directory with `python -m http.server 8080`, then open
+`http://localhost:8080`. No build or npm dependencies are needed.
 
 ```sh
+node tools/update-asset-revisions.cjs
+node --check combat.js
+node --check cpu.js
 node --check game.js
 node --test tests/*.test.cjs
 ```
 
-Tests exercise 60/144 Hz timing equivalence, jump repeat, focus-loss pause, resume without catch-up, action-driven practice, unlimited respawns and frozen match-end/rematch. They use event/simulation harnesses, not rendered browser acceptance. Manual smoke check: move both players, double jump, hit an opponent, pause from keyboard and button, switch windows, resume and reset.
+Refresh the content revisions after changing runtime scripts or styles so the
+published page requests matching assets even when an older release is cached.
 
-`game.js` contains input, physics, combat and rendering; `index.html` contains the controls and `style.css` the presentation. The prototype has one stage and one moveset; a passing timing test is not a balance or latency claim.
+`combat.js` is the deterministic 60 Hz simulation, `cpu.js` produces ordinary
+player inputs from delayed observations, and `game.js` owns browser input,
+rendering, audio and the fixed-step loop. Move data is in `MOVES`; stage geometry
+is in `STAGES`. Pause clears accumulated time and input, so returning cannot
+fast-forward a match. State stays in memory; refresh discards the current match.
+
+Regression coverage includes directional attacks and buffers, charge, trades,
+parry/projectiles, combos, short hops, platform drops, aerial resources, recovery,
+knockouts, practice, CPU matches, and input/pause integration. These are software
+checks; they do not establish competitive balance, physical-device latency or
+subjective fun. See [combat design](docs/COMBAT-DESIGN.md) for scope and influences.

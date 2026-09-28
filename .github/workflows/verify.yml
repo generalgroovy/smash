@@ -1,0 +1,21 @@
+name: Verify fighter
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Parse runtime scripts
+        run: |
+          node --check combat.js
+          node --check cpu.js
+          node --check game.js
+      - name: Combat, CPU and integration regressions
+        run: node --test tests/*.test.cjs
