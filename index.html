@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0b1120" />
   <meta name="description" content="A fast platform fighter: directional strikes, charged finishers, parries and aerial recoveries. Play against the CPU, a friend, or a practice dummy." />
   <title>Platform Fighter</title>
-  <link rel="stylesheet" href="style.css?v=31eba523332d" />
+  <link rel="stylesheet" href="style.css?v=9c7f1d033ee9" />
 </head>
 <body>
   <main>
@@ -21,7 +21,8 @@
       <div class="setup">
         <label>Mode<select id="modeSelect"><option value="cpu">Vs CPU</option><option value="versus">Local 2P</option><option value="training">Practice</option></select></label>
         <label>Stage<select id="stageSelect"><option value="triad">Skyline</option><option value="duel">Crossroads</option></select></label>
-        <label id="difficultyControl">CPU<select id="difficultySelect"><option value="easy">Easy</option><option value="normal" selected>Normal</option><option value="hard">Hard</option></select></label>
+        <label id="difficultyControl">CPU<select id="difficultySelect"><option value="easy" selected>Easy</option><option value="normal">Normal</option><option value="hard">Hard</option></select></label>
+        <label id="practiceControl" hidden>Focus<select id="practiceSelect"><option value="basics">First steps</option><option value="combos">Combos</option><option value="recoveryLeft">Left edge</option><option value="recoveryRight">Right edge</option></select></label>
       </div>
       <div class="match-actions"><button id="resetBtn" class="quiet">Reset</button><button id="pauseBtn" class="primary" aria-pressed="false" title="Play / pause (P)">Play</button></div>
     </section>
@@ -39,7 +40,7 @@
         <button data-action="light" class="light">Light</button><button data-action="strong" class="strong">Strong</button><button data-action="special" class="special">Special</button>
       </div>
     </section>
-    <div id="quickControls" class="quick-controls"><span><b>WASD</b> direction</span><span><b>Space</b> jump</span><span><b>F / G / H</b> attacks</span><span><b>R</b> dodge</span></div>
+    <div id="quickControls" class="quick-controls"><span><b>WASD</b> direction</span><span><b>Space</b> jump</span><span><b>F</b> light</span><span><b>G</b> strong</span><span><b>H</b> special</span><span><b>R</b> dodge</span></div>
     <details class="info">
       <summary>Info &amp; moves</summary>
       <div class="info-content">
@@ -53,14 +54,14 @@
           <tr><th scope="row">Strong</th><td>Hold, then release: side finisher · up launch · down sweep. Charging leaves you open.</td><td>Same directional aerials as Light; no airborne charging.</td></tr>
           <tr><th scope="row">Special</th><td colspan="2">Neutral bolt · side burst · up recovery · down pulse. Wait for the cooldown before repeating.</td></tr>
         </tbody></table>
-        <p>Practice has unlimited stocks and a stationary opponent. Its prompts advance when you perform each action. CPU difficulty changes reaction speed and decisions.</p>
+        <p>Practice has unlimited stocks. First steps teaches the controls. Combos uses a target that tries to dodge as soon as it can; the counter only joins hits before an escape window. Recovery starts you offstage with one jump: steer inward, jump, then aim up + Special. Landing refills your aerial options. Retry repeats the setup immediately. CPU difficulty changes reaction speed and decisions.</p>
         <label class="setting"><input id="motionToggle" type="checkbox" /> Reduce motion and screen shake</label>
       </div>
     </details>
     <noscript>This game needs JavaScript enabled.</noscript>
   </main>
-  <script src="combat.js?v=af17c63d12a5"></script>
+  <script src="combat.js?v=a0935cc67ed2"></script>
   <script src="cpu.js?v=dfff5fea886f"></script>
-  <script src="game.js?v=d0d272fbc97c"></script>
+  <script src="game.js?v=48e1cd3c32e1"></script>
 </body>
 </html>

@@ -34,20 +34,46 @@
     duel: {name:"Crossroads",platforms:[{x:145,y:435,w:670,h:28,solid:true},{x:390,y:300,w:180,h:16}]}
   };
   const practicePrompts = ["Move with A / D, or the direction pad.","Jump. Release early for a short hop.","Land a light attack on P2.","Land a strong attack. Hold to charge; release to strike.","Land a special. Direction changes its effect.","Try a parry or directional dodge.","Mix launchers, aerials and finishers. Unlimited stocks; reset any time."];
+  const practiceFocuses = ["basics","combos","recoveryLeft","recoveryRight"];
+  const recoveryPractice = s => s.mode==="training" && s.practiceFocus.startsWith("recovery");
+
+  function placePractice(s,f) {
+    if (s.mode!=="training") return;
+    if (s.practiceFocus==="combos" && f.id===1) f.x=358;
+    if (recoveryPractice(s) && f.id===0) {
+      const floor=s.platforms.find(p=>p.solid),left=s.practiceFocus==="recoveryLeft";
+      Object.assign(f,{x:left?floor.x-100:floor.x+floor.w+62,y:floor.y-65,vx:0,vy:1,
+        onGround:false,platform:-1,jumps:1,coyote:0,facing:left?1:-1});
+    }
+  }
+  function practiceInput(s) {
+    const f=s.fighters[1],input=emptyInput();
+    // Buffer a normal dodge near the end of hitstun. No invulnerability or
+    // reaction shortcut is granted: the ordinary controls resolve the escape.
+    if (s.practiceFocus==="combos" && f.comboOwner===0 && f.hitstun<=7 && (f.onGround || !f.airDodgeUsed)) {
+      input.x=f.x>=s.fighters[0].x?1:-1;input.dodge=true;
+    }
+    return input;
+  }
 
   function makeFighter(id, training) {
     return {id,name:id ? "Ember" : "Nova",color:id ? "#fb7185" : "#67e8f9",x:id ? (training ? 430 : 600) : 320,y:381,w:38,h:54,
       vx:0,vy:0,facing:id ? -1 : 1,damage:0,stocks:3,onGround:true,platform:0,jumps:2,hitstun:0,hitFlash:0,invuln:0,landingLag:0,
       fastFall:false,airDodgeUsed:false,recoveryUsed:false,specialCooldown:0,move:null,defense:null,combo:0,comboTimer:0,
       lastMove:"",labelTimer:0,lastDamage:0,prev:emptyInput(),input:emptyInput(),buffer:{},bufferIntent:{},dropTimer:0,coyote:5,sliding:0,
-      recentDodge:99,history:[],airBurstUsed:false,jumpCut:false,pendingCut:false};
+      recentDodge:99,history:[],airBurstUsed:false,jumpCut:false,pendingCut:false,comboDamage:0};
   }
   function createGame(options={}) {
     const mode = ["cpu","versus","training"].includes(options.mode) ? options.mode : "cpu";
     const stageId = STAGES[options.stage] ? options.stage : "triad";
-    return {width:960,height:540,frame:0,mode,stageId,platforms:STAGES[stageId].platforms.map(p=>({...p})),
+    const practiceFocus=mode==="training" && practiceFocuses.includes(options.practiceFocus)?options.practiceFocus:"basics";
+    const s={width:960,height:540,frame:0,mode,stageId,practiceFocus,platforms:STAGES[stageId].platforms.map(p=>({...p})),
       fighters:[makeFighter(0,mode==="training"),makeFighter(1,mode==="training")],projectiles:[],effects:[],events:[],
-      winner:null,hitstop:0,shake:0,practiceStep:0,practiceText:practicePrompts[0],lastHit:null};
+      winner:null,hitstop:0,shake:0,practiceStep:0,practiceBest:0,practiceComplete:false,practiceText:practicePrompts[0],lastHit:null};
+    if (practiceFocus==="combos") s.practiceText="Up + Light, then Jump + Up + Light. The target tries to dodge gaps.";
+    if (recoveryPractice(s)) s.practiceText=`Return from the ${practiceFocus==="recoveryLeft"?"left":"right"} edge: steer inward, Jump, then Up + Special.`;
+    s.fighters.forEach(f=>placePractice(s,f));
+    return s;
   }
   function effect(s,type,x,y,color,text="",life=18,direction=1) {
     s.effects.push({type,x,y,color,text,life,maxLife:life,direction});
@@ -55,7 +81,7 @@
   }
   function event(s,type,details={}) { s.events.push({type,...details}); }
   function progress(s,index) {
-    if (s.mode!=="training" || s.practiceStep!==index) return;
+    if (s.mode!=="training" || s.practiceFocus!=="basics" || s.practiceStep!==index) return;
     s.practiceStep++; s.practiceText=practicePrompts[s.practiceStep];
   }
   function normalize(input={}) {
@@ -218,6 +244,9 @@
     if (Math.abs(f.vx)<.025) f.vx=0;
   }
   function applyHit(s,attacker,victim,descriptor,source) {
+    // Read this before replacing hitstun. A combo must connect before the
+    // defender has a legal action frame; the HUD grace period is display only.
+    const connected=victim.hitstun>0 && victim.comboOwner===attacker.id && attacker.combo>0;
     const repeated=attacker.history.filter(id=>id===source.id).length;
     const stale=1-Math.min(3,repeated)*.07;
     const charged=source.charge ? source.charge/60 : 0;
@@ -235,14 +264,19 @@
     victim.hitFlash=16;victim.lastDamage=damage;victim.move=null;victim.defense=null;victim.landingLag=0;
     victim.fastFall=false;victim.onGround=false;victim.platform=-1;victim.coyote=0;victim.jumps=Math.min(victim.jumps,1);
     victim.buffer={};victim.pendingCut=false;
-    attacker.combo=attacker.comboTimer>0 && victim.comboOwner===attacker.id ? attacker.combo+1 : 1;
+    attacker.combo=connected?attacker.combo+1:1;
+    attacker.comboDamage=Math.round((connected?attacker.comboDamage+damage:damage)*10)/10;
     attacker.comboTimer=victim.hitstun+18;victim.comboOwner=attacker.id;
     attacker.history.push(source.id);if(attacker.history.length>3)attacker.history.shift();
-    s.lastHit={attacker:attacker.id,victim:victim.id,move:descriptor.name,damage,combo:attacker.combo};
+    s.lastHit={attacker:attacker.id,victim:victim.id,move:descriptor.name,damage,combo:attacker.combo,comboDamage:attacker.comboDamage};
     s.hitstop=Math.max(s.hitstop,descriptor.kind==="strong"?8:5);s.shake=Math.max(s.shake,descriptor.kind==="strong"?7:3);
     effect(s,"hit",victim.x+victim.w/2,victim.y+victim.h/2,descriptor.color,`+${damage}`,24,direction);
     event(s,"hit",{...s.lastHit,kind:descriptor.kind});
     if(attacker.id===0) {
+      if(s.mode==="training" && s.practiceFocus==="combos") {
+        s.practiceBest=Math.max(s.practiceBest,attacker.combo);
+        s.practiceText=attacker.combo>1?`${attacker.combo}-hit combo · ${attacker.comboDamage} damage. Best: ${s.practiceBest}. Retry to repeat.`:"Hit! Follow before the target can dodge.";
+      }
       if(descriptor.kind==="light")progress(s,2);
       else if(descriptor.kind==="strong")progress(s,3);
       else if(descriptor.kind==="special")progress(s,4);
@@ -283,6 +317,8 @@
   function respawn(s,f) {
     const stocks=f.stocks,history=f.history,held={...f.input};
     Object.assign(f,makeFighter(f.id,s.mode==="training"),{stocks,history,y:s.mode==="training"?381:140,onGround:s.mode==="training",platform:s.mode==="training"?0:-1,invuln:s.mode==="training"?24:100});
+    placePractice(s,f);
+    if(recoveryPractice(s) && f.id===0) {s.practiceComplete=false;s.practiceText="Try again: steer inward, Jump, then Up + Special. Land to refill both.";}
     // Neutralize held actions through the respawn; a new press is needed.
     f.prev=held;f.input=held;
     s.projectiles=s.projectiles.filter(p=>p.owner!==f.id);
@@ -306,18 +342,29 @@
     if(s.winner!==null)return s;
     s.frame++;
     s.effects=s.effects.filter(e=>--e.life>0);s.shake=Math.max(0,s.shake-.6);
-    for(let i=0;i<2;i++)sample(s.fighters[i],s.mode==="training"&&i===1?emptyInput():inputs[i]);
+    for(let i=0;i<2;i++)sample(s.fighters[i],s.mode==="training"&&i===1?practiceInput(s):inputs[i]);
     if(s.hitstop>0){s.hitstop--;return s;}
     for(const f of s.fighters) {
       if(f.stocks<=0)continue;
       for(const key of ["hitstun","hitFlash","invuln","landingLag","specialCooldown","dropTimer","coyote","sliding","labelTimer","comboTimer"])if(f[key]>0)f[key]--;
       if(!f.comboTimer)f.combo=0;
+      if(!f.hitstun && f.comboOwner!==undefined) {
+        if(s.mode==="training" && s.practiceFocus==="combos" && f.id===1) {
+          const chain=s.fighters[0];
+          s.practiceText=chain.combo>1?`${chain.combo}-hit combo · ${chain.comboDamage} damage. Target can act now. Retry to repeat.`:`Escape window. Best: ${s.practiceBest} hit${s.practiceBest===1?"":"s"}. Retry, then follow sooner.`;
+        }
+        delete f.comboOwner;
+      }
       f.recentDodge++;
       if(f.defense) {
         f.defense.frame++;
         if(f.defense.frame>=(f.defense.type==="parry"?28:f.defense.type==="roll"?30:27))f.defense=null;
       }
       controls(s,f);advanceMove(s,f);physics(s,f);
+      if(recoveryPractice(s) && f.id===0 && f.onGround && !s.practiceComplete) {
+        s.practiceComplete=true;s.practiceText="Recovered! Landing refills Jump, Dodge and Up + Special. Retry to repeat.";
+        event(s,"practice-success",{fighter:0});
+      }
       for(const key of Object.keys(f.buffer))if(f.buffer[key]>0)f.buffer[key]--;
     }
     for(const p of s.projectiles){p.x+=p.vx;p.y+=p.vy;p.life--;}

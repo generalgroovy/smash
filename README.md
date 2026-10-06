@@ -7,7 +7,8 @@ stocks to win. Play against a CPU, share a keyboard with a friend, or learn in
 Practice. Two stages and one shared moveset keep the contest about movement,
 spacing and timing. No installation, account or online session is required.
 
-Choose your mode and stage, then **Play**. Start with **Easy** CPU or **Practice**.
+Choose your mode and stage, then **Play**. CPU starts on **Easy**; choose **Practice**
+to learn or repeat a specific skill.
 P pauses; changing mode or stage prepares a fresh match. Losing focus pauses
 automatically. A completed match freezes and focuses **Rematch**.
 
@@ -52,9 +53,20 @@ down + jump drops through an upper platform. Attacks have startup, active and
 recovery phases. Inputs buffered near recovery keep their chosen direction.
 Hold jump for height; a new press is required for the second jump.
 
-Practice has unlimited stocks and a stationary target. Prompts observe movement,
-jumping, landed light/strong/special attacks and defense. Reset practice to put
-both fighters back in position. Full reference stays under **Info & moves**.
+Practice has unlimited stocks and one **Focus** choice:
+
+- **First steps:** prompts follow movement, jumping, landed attacks and defense.
+- **Combos:** up + Light launches; Jump and follow with up + Light in the air.
+  The target attempts a normal dodge at the first escape window. A counted combo
+  connects before that window; damage and the best chain help compare attempts.
+- **Left edge / Right edge:** start offstage with one jump. Steer toward the
+  stage, Jump, then up + Special. Landing restores the aerial resources. A missed
+  recovery returns to the same setup without losing a stock.
+
+Changing Focus waits for **Play**, so you can read the goal before moving.
+**Retry** restores the selected setup and starts immediately. Pause keeps the
+practice goal visible; Retry also clears old held inputs and resets the attempt's
+best chain. Full reference stays under **Info & moves**.
 
 CPU difficulty changes observation delay and decision mistakes, never damage or
 movement stats. It uses the same attacks and recovery limits. Sound is opt-in;
@@ -84,6 +96,9 @@ fast-forward a match. State stays in memory; refresh discards the current match.
 
 Regression coverage includes directional attacks and buffers, charge, trades,
 parry/projectiles, combos, short hops, platform drops, aerial resources, recovery,
-knockouts, practice, CPU matches, and input/pause integration. These are software
+knockouts, true versus escapable combos, both recovery drills on both stages,
+practice transitions, CPU matches, and input/pause integration. These are software
 checks; they do not establish competitive balance, physical-device latency or
 subjective fun. See [combat design](docs/COMBAT-DESIGN.md) for scope and influences.
+The [October quality record](docs/PROJECT-QUALITY-2026-10-06.md) includes the
+focused browser and regression evidence for practice.

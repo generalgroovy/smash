@@ -33,6 +33,7 @@ function setup(options = {}) {
   document.getElementById('modeSelect').value = options.mode || 'versus';
   document.getElementById('stageSelect').value = 'triad';
   document.getElementById('difficultySelect').value = 'normal';
+  document.getElementById('practiceSelect').value = options.practiceFocus || 'basics';
   const preference = { matches: !!options.reducedMotion, addEventListener(name, callback) { this[name] = callback; } };
   const window = { matchMedia() { return preference; }, addEventListener(name, callback) { events[name] = callback; }, ...options.window };
   const sandbox = vm.createContext({ document, window, PlatformFighter: require('../combat.js'), FighterCPU: require('../cpu.js'), requestAnimationFrame() {} });

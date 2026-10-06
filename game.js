@@ -8,6 +8,8 @@ const modeSelect = document.getElementById("modeSelect");
 const stageSelect = document.getElementById("stageSelect");
 const difficultySelect = document.getElementById("difficultySelect");
 const difficultyControl = document.getElementById("difficultyControl");
+const practiceControl = document.getElementById("practiceControl");
+const practiceSelect = document.getElementById("practiceSelect");
 const matchStatus = document.getElementById("matchStatus");
 const soundBtn = document.getElementById("soundBtn");
 const motionToggle = document.getElementById("motionToggle");
@@ -27,7 +29,7 @@ const actionNames = new Set(["jump", "light", "strong", "special", "dodge"]);
 const W = canvas.width;
 const H = canvas.height;
 const STEP_MS = 1000 / 60;
-let state = PlatformFighter.createGame({ mode: modeSelect.value, stage: stageSelect.value });
+let state = PlatformFighter.createGame({ mode: modeSelect.value, stage: stageSelect.value, practiceFocus: practiceSelect.value });
 let paused = true;
 let started = false;
 let previousFrame = null;
@@ -79,7 +81,7 @@ function inputFor(index) {
 }
 
 function readyMessage() {
-  if (state.mode === "training") return "Practice: unlimited stocks. Press Play to begin.";
+  if (state.mode === "training") return `${state.practiceText} Press Play to begin.`;
   return state.mode === "versus" ? "Local 2P · Three stocks each. Press Play when both players are ready." : "Three stocks. Build damage, then launch your rival offstage.";
 }
 
@@ -88,7 +90,10 @@ function setPaused(value) {
   paused = value; clearInput(); previousFrame = null; accumulatedTime = 0;
   pauseBtn.textContent = !started ? "Play" : paused ? "Resume" : "Pause";
   pauseBtn.setAttribute("aria-pressed", String(started && paused));
-  if (started) announce(paused ? "Paused. Resume when ready." : state.mode === "training" ? state.practiceText : "Three stocks. Light to connect; strong to finish.");
+  if (started) {
+    if (state.mode === "training") announce(`${paused ? "Paused. " : ""}${state.practiceText}`);
+    else announce(paused ? "Paused. Resume when ready." : "Three stocks. Light to connect; strong to finish.");
+  }
 }
 
 function playPause() {
@@ -99,10 +104,11 @@ function playPause() {
 
 function resetMatch(play = false) {
   clearInput();
-  state = PlatformFighter.createGame({ mode: modeSelect.value, stage: stageSelect.value });
+  state = PlatformFighter.createGame({ mode: modeSelect.value, stage: stageSelect.value, practiceFocus: practiceSelect.value });
   started = false; pauseBtn.disabled = false;
-  resetBtn.textContent = state.mode === "training" ? "Reset practice" : "Reset";
+  resetBtn.textContent = state.mode === "training" ? "Retry" : "Reset";
   difficultyControl.hidden = state.mode !== "cpu"; touchControls.hidden = state.mode === "versus";
+  practiceControl.hidden = state.mode !== "training";
   setPaused(true); announce(readyMessage());
   if (play) playPause();
 }
@@ -449,4 +455,5 @@ pauseBtn.addEventListener("click", playPause);
 modeSelect.addEventListener("change", () => resetMatch());
 stageSelect.addEventListener("change", () => resetMatch());
 difficultySelect.addEventListener("change", () => resetMatch());
+practiceSelect.addEventListener("change", () => resetMatch());
 resetMatch(); requestAnimationFrame(loop);

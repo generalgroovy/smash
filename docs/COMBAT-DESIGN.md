@@ -28,6 +28,20 @@ hit. Damage increases knockback; brief hitstop and impact feedback make contact
 readable. The last three landed moves apply a small repeated-move penalty.
 Stocks include top, side and lower blast zones. Respawn protection ends on attack.
 
+The October practice pass distinguishes a continuous combo from renewed pressure:
+another hit counts only while the defender is still in hitstun. The short HUD
+display grace period never extends that connection window. Damage, knockback,
+attack timings, buffers, stages and CPU tuning are otherwise unchanged.
+
+Practice exposes one focus at a time. Combos starts at zero damage, with a target
+that buffers the existing directional dodge near the end of hitstun. It has the
+same startup and one-use aerial dodge as a player; it can be hit again during
+dodge recovery. This is an escape test, not a claim of universal combo coverage:
+directional influence, other defensive choices and different starting percentages
+still matter in a match. The two edge drills start symmetrically with one jump;
+normal landing restores jump, recovery and dodge. A failed return restores that
+edge setup. No drill option can change a regular match into Practice.
+
 The CPU uses delayed visible observations, deterministic decisions, ordinary
 input and the same physics. Easy/normal/hard changes reactions and mistakes;
 there are no damage bonuses. Automated bouts cover both stages, all difficulties,
