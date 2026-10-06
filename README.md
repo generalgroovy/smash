@@ -7,6 +7,16 @@ stocks to win. Play against a CPU, share a keyboard with a friend, or learn in
 Practice. Two stages and one shared moveset keep the contest about movement,
 spacing and timing. No installation, account or online session is required.
 
+## Engineering overview
+
+- **Simulation:** a deterministic 60 Hz combat model separates game rules from rendering and audio.
+- **Opponent behaviour:** CPU players produce ordinary inputs from delayed observations; difficulty changes decisions rather than damage or movement statistics.
+- **Browser interaction:** a fixed-step loop coordinates input, rendering and audio, with focus-loss pausing and explicit practice-state transitions.
+
+[Project overview](https://generalgroovy.web.app/apps/platform-fighter/) · [Combat design](docs/COMBAT-DESIGN.md) · [Tests](tests/)
+
+## Start playing
+
 Choose your mode and stage, then **Play**. CPU starts on **Easy**; choose **Practice**
 to learn or repeat a specific skill.
 P pauses; changing mode or stage prepares a fresh match. Losing focus pauses
