@@ -53,6 +53,13 @@ make those choices explicit without adding another instructions panel.
 - [Follow-up CI](https://github.com/generalgroovy/smash/actions/runs/37604054680)
   passes syntax and all 65 tests for that corrected runtime. Root rendered
   browser checks remain a separate integration gate.
+- Root CUA verified the source flows at 1366 px and 390 px: Crossroads stays
+  selected when First steps launches; Left edge waits ready, starts, pauses and
+  retries with arena focus; phone controls remain legible. Its 844 × 420 check
+  found setup, Resume and touch controls below the arena viewport. A follow-up
+  short-landscape grid puts the arena beside setup, status and the touch pad;
+  Info stays reachable below. Reviewer ux_arena inspected this CSS/hash-only
+  follow-up with no source blocker. Final rendered bounds verification pending.
 
 ## Limits
 
