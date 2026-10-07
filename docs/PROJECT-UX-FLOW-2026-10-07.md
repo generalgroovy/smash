@@ -1,6 +1,6 @@
 # Platform Fighter — an optional route through practice
 
-Baseline: `0cc25935b29407128ba375f71ff2eef604f4deac`, clean and matching upstream main on 7 October 2026. Candidate branch: `codex/ux-flow-2026-10-07`.
+Baseline: `0cc25935b29407128ba375f71ff2eef604f4deac`, clean and matching upstream main on 7 October 2026. Candidate branch: `codex/ux-flow-2026-10-07`. Runtime: `62aa6d43a1de22fde38701c795e8251bfc5c84c4`.
 
 First steps previously ended in an unmarked free-practice prompt. The existing combo and edge-recovery drills were independent dropdown choices without an onward route after success. This change reuses the First steps button as an optional next-goal action after an earned achievement.
 
@@ -10,6 +10,14 @@ Choosing the next goal clears held inputs, preserves the selected stage, prepare
 
 Owner validation: `node --test tests/*.test.cjs` passes **70 tests**, zero failed/skipped. Five new integration tests verify earned completion, no unsolicited focus/pause change, route thresholds, stage and input preservation, ready-state transitions, optional free practice, retry/setup reset and regular-match isolation. Existing deterministic tests separately verify real landed attacks, true combos and recovery completion on both stages. Script syntax and diff checks pass; runtime asset revisions are updated.
 
-A CI-only composed-browser harness checks the route at 1366 × 900, 390 × 844, 320 × 740 and 844 × 420. It uses engine-result fixtures to reach each goal and real keyboard input for the final basics dodge; its checks are UI acceptance, not a claim that a novice completed all drills. It also checks focused ready-state transitions, complete landscape control visibility, errors/overflow and complete goal-state captures. CI, independent review and root rendering/publication remain separate gates at this initial handoff.
+A CI-only composed-browser harness checks the route at 1366 × 900, 390 × 844, 320 × 740 and 844 × 420. It uses engine-result fixtures to reach each goal and real keyboard input for the final basics dodge; its checks are UI acceptance, not a claim that a novice completed all drills. It also checks focused ready-state transitions, complete landscape control visibility, errors/overflow and complete goal-state captures. [Candidate CI 37612380248](https://github.com/generalgroovy/smash/actions/runs/37612380248) passed every check at the exact runtime above, with no page errors or horizontal overflow.
 
-Intended URL: [Platform Fighter](https://generalgroovy.github.io/smash/). Candidate push is not publication. No new production dependency or saved data is introduced. Tests do not establish subjective fun, competitive balance, physical-device input ergonomics, audio quality or human learning outcomes.
+The owner visually inspected the complete [320px phone](evidence/ux-flow-2026-10-07/goal-met-phone.png) and [844 × 420 landscape](evidence/ux-flow-2026-10-07/goal-met-landscape.png) captures. The earned Next action, Retry/Pause and touch pad remain readable and visible together in short landscape.
+
+Root's real-keyboard CUA pass earned all six First steps goals through movement with D, Jump, landed Light/Strong/Special attacks with F/G/H and Dodge with R. Goal met and Next: Combos appeared without stealing focus. Choosing Next: Combos prepared a Ready drill, retained Skyline, showed its instruction and focused Start practice. [Root-earned goal evidence](evidence/ux-flow-2026-10-07/earned-next-goal.png). Root accepted the rendered flow and authorized normal main promotion after independent source review.
+
+Independent reviewer `flow_c` accepted the frozen runtime with no actionable blocker, independently passing the canonical 70-test suite and syntax/diff checks. Review covered earned/latching thresholds, neutral input, optional free practice, ready-state focus, retained stage, normal-match isolation and the final Easy CPU transition. The review is recorded in the consolidation handoff at `ux-flow-2026-10-07/reviews/smash-review.md`.
+
+The validated runtime was promoted by normal fast-forward push. [Main CI 37613185386](https://github.com/generalgroovy/smash/actions/runs/37613185386) and [Pages deployment 37613184040](https://github.com/generalgroovy/smash/actions/runs/37613184040) both succeeded at that exact runtime. HTTPS verification on 7 October 2026 compared `index.html`, `style.css`, `combat.js`, `cpu.js` and `game.js` against committed Git bytes: all five matched exactly. Full hashes are in the consolidation handoff at `ux-flow-2026-10-07/evidence/smash-public.json`. The subsequent release-record delta contains documentation and screenshots only.
+
+Published URL: [Platform Fighter](https://generalgroovy.github.io/smash/). No new production dependency or saved data is introduced. Tests do not establish subjective fun, competitive balance, physical-device input ergonomics, audio quality or human learning outcomes.
