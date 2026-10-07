@@ -39,6 +39,9 @@ make those choices explicit without adding another instructions panel.
   CPU, drills, input, pause, touch cancellation, sound, rendering and asset hashes.
 - `node --check game.js` and `git diff --check` pass. Runtime asset revisions were
   refreshed with `node tools/update-asset-revisions.cjs`.
+- Candidate runtime `f4dcd1f946e614ea4d25c062529ab57fd7c4bc25` passes
+  [GitHub verification](https://github.com/generalgroovy/smash/actions/runs/37603296451):
+  script syntax and all 64 behavior/asset checks on Node 22.
 - Root browser checks and independent review: pending integration; this record
   will be updated with actual results before publication.
 
