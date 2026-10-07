@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0b1120" />
   <meta name="description" content="A fast platform fighter: directional strikes, charged finishers, parries and aerial recoveries. Play against the CPU, a friend, or a practice dummy." />
   <title>Platform Fighter</title>
-  <link rel="stylesheet" href="style.css?v=9c7f1d033ee9" />
+  <link rel="stylesheet" href="style.css?v=77e1bb1f513d" />
 </head>
 <body>
   <main>
@@ -24,9 +24,9 @@
         <label id="difficultyControl">CPU<select id="difficultySelect"><option value="easy" selected>Easy</option><option value="normal">Normal</option><option value="hard">Hard</option></select></label>
         <label id="practiceControl" hidden>Focus<select id="practiceSelect"><option value="basics">First steps</option><option value="combos">Combos</option><option value="recoveryLeft">Left edge</option><option value="recoveryRight">Right edge</option></select></label>
       </div>
-      <div class="match-actions"><button id="resetBtn" class="quiet">Reset</button><button id="pauseBtn" class="primary" aria-pressed="false" title="Play / pause (P)">Play</button></div>
+      <div class="match-actions"><button id="learnBtn" class="quiet">First steps</button><button id="resetBtn" class="quiet" hidden>Restart</button><button id="pauseBtn" class="primary" aria-pressed="false" title="Play / pause (P)">Play CPU</button></div>
     </section>
-    <p id="matchStatus" class="match-status" role="status">Three stocks. Build damage, then launch your rival offstage.</p>
+    <div class="match-feedback"><span id="matchState" class="match-state">Ready</span><p id="matchStatus" class="match-status" role="status">Build damage, then launch your rival offstage. First steps teaches the moves.</p></div>
     <section id="touchControls" class="touch-controls" aria-label="Player one touch controls">
       <div class="direction-pad" aria-label="Direction">
         <button data-action="up" class="up" aria-label="Aim up">↑</button>
@@ -62,6 +62,6 @@
   </main>
   <script src="combat.js?v=a0935cc67ed2"></script>
   <script src="cpu.js?v=dfff5fea886f"></script>
-  <script src="game.js?v=48e1cd3c32e1"></script>
+  <script src="game.js?v=a9fca42145f9"></script>
 </body>
 </html>

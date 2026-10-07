@@ -17,10 +17,15 @@ spacing and timing. No installation, account or online session is required.
 
 ## Start playing
 
-Choose your mode and stage, then **Play**. CPU starts on **Easy**; choose **Practice**
-to learn or repeat a specific skill.
+Choose **First steps** to learn one move at a time with unlimited stocks, or
+**Play CPU** for an Easy match. The Mode and Stage controls keep other options
+close by. Practice's **Focus** offers combos and recovery from either edge.
 P pauses; changing mode or stage prepares a fresh match. Losing focus pauses
-automatically. A completed match freezes and focuses **Rematch**.
+automatically. **Resume** continues the current round; **Restart** begins again.
+A completed match freezes and focuses **Rematch**. Local 2P shares one keyboard.
+The status beside the arena distinguishes Ready, Playing, Practice, Paused and
+Complete. Offstage, the hint points back toward the stage and suggests only
+remaining jumps or recovery; landing restores the normal practice goal.
 
 ## Controls
 
@@ -73,7 +78,7 @@ Practice has unlimited stocks and one **Focus** choice:
   stage, Jump, then up + Special. Landing restores the aerial resources. A missed
   recovery returns to the same setup without losing a stock.
 
-Changing Focus waits for **Play**, so you can read the goal before moving.
+Changing Focus waits for **Start practice**, so you can read the goal before moving.
 **Retry** restores the selected setup and starts immediately. Pause keeps the
 practice goal visible; Retry also clears old held inputs and resets the attempt's
 best chain. Full reference stays under **Info & moves**.
@@ -112,3 +117,5 @@ checks; they do not establish competitive balance, physical-device latency or
 subjective fun. See [combat design](docs/COMBAT-DESIGN.md) for scope and influences.
 The [October quality record](docs/PROJECT-QUALITY-2026-10-06.md) includes the
 focused browser and regression evidence for practice.
+The [interface refinement record](docs/PROJECT-UX-2026-10-07.md) covers direct
+First steps entry, match states, resource-aware hints and focus behavior.

@@ -4,6 +4,8 @@ const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 const resetBtn = document.getElementById("resetBtn");
 const pauseBtn = document.getElementById("pauseBtn");
+const learnBtn = document.getElementById("learnBtn");
+const matchState = document.getElementById("matchState");
 const modeSelect = document.getElementById("modeSelect");
 const stageSelect = document.getElementById("stageSelect");
 const difficultySelect = document.getElementById("difficultySelect");
@@ -81,18 +83,42 @@ function inputFor(index) {
 }
 
 function readyMessage() {
-  if (state.mode === "training") return `${state.practiceText} Press Play to begin.`;
-  return state.mode === "versus" ? "Local 2P · Three stocks each. Press Play when both players are ready." : "Three stocks. Build damage, then launch your rival offstage.";
+  if (state.mode === "training") return `${state.practiceText} Start practice when ready.`;
+  return state.mode === "versus" ? "Share a keyboard. P1: WASD + Space / F G H R. P2: arrows + Enter / J K L / right Shift." : "Build damage, then launch your rival offstage. First steps teaches the moves.";
+}
+
+function playHint() {
+  const fighter = state.fighters[0], floor = state.platforms.find(platform => platform.solid);
+  // Only offer a return route when the body has actually left the main stage.
+  // The advice follows remaining resources; an exhausted recovery is not repeatable.
+  if (!fighter.onGround && (fighter.x + fighter.w <= floor.x || fighter.x >= floor.x + floor.w)) {
+    const direction = fighter.x < floor.x ? "right" : "left";
+    if (fighter.hitstun > 0) return `Launched! Hold ${direction} to steer back as soon as you can move.`;
+    if (fighter.recoveryUsed) return `Recovery used. Keep steering ${direction} to land and refill your moves.`;
+    return `Offstage: steer ${direction}. ${fighter.jumps > 0 ? "Jump, then " : ""}Up + Special to rise.`;
+  }
+  if (state.mode === "training") return state.practiceText || "Practice freely. Stocks are unlimited.";
+  return "Light connects. Hold a direction to change the move; charge Strong to finish.";
+}
+
+function syncMatchControls() {
+  const finished = state.winner !== null;
+  matchState.textContent = finished ? "Complete" : !started ? "Ready" : paused ? "Paused" : state.mode === "training" ? "Practice" : "Playing";
+  pauseBtn.textContent = finished ? "Finished" : !started ? state.mode === "training" ? "Start practice" : state.mode === "cpu" ? "Play CPU" : "Play 2P" : paused ? "Resume" : "Pause";
+  pauseBtn.disabled = finished;
+  pauseBtn.setAttribute("aria-pressed", String(started && paused && !finished));
+  resetBtn.textContent = finished ? "Rematch" : state.mode === "training" ? "Retry" : "Restart";
+  resetBtn.hidden = !started;
+  learnBtn.hidden = started || state.mode !== "cpu";
 }
 
 function setPaused(value) {
   if (state.winner !== null) return;
   paused = value; clearInput(); previousFrame = null; accumulatedTime = 0;
-  pauseBtn.textContent = !started ? "Play" : paused ? "Resume" : "Pause";
-  pauseBtn.setAttribute("aria-pressed", String(started && paused));
+  syncMatchControls();
   if (started) {
     if (state.mode === "training") announce(`${paused ? "Paused. " : ""}${state.practiceText}`);
-    else announce(paused ? "Paused. Resume when ready." : "Three stocks. Light to connect; strong to finish.");
+    else announce(paused ? "Paused. Resume keeps this round; Restart begins a new one." : playHint());
   }
 }
 
@@ -105,8 +131,7 @@ function playPause() {
 function resetMatch(play = false) {
   clearInput();
   state = PlatformFighter.createGame({ mode: modeSelect.value, stage: stageSelect.value, practiceFocus: practiceSelect.value });
-  started = false; pauseBtn.disabled = false;
-  resetBtn.textContent = state.mode === "training" ? "Retry" : "Reset";
+  started = false;
   difficultyControl.hidden = state.mode !== "cpu"; touchControls.hidden = state.mode === "versus";
   practiceControl.hidden = state.mode !== "training";
   setPaused(true); announce(readyMessage());
@@ -125,9 +150,9 @@ function update() {
   syncTouchButtons(); playEvents(state.events || []);
   if (state.winner !== null) {
     clearInput(); paused = true; accumulatedTime = 0;
-    resetBtn.textContent = "Rematch"; pauseBtn.textContent = "Finished"; pauseBtn.disabled = true;
+    syncMatchControls();
     announce(`${winnerText()}. Choose Rematch to play again.`); resetBtn.focus({ preventScroll: true });
-  } else if (state.mode === "training") announce(state.practiceText || "Practice freely. Stocks are unlimited.");
+  } else announce(playHint());
 }
 
 function winnerText() {
@@ -339,7 +364,7 @@ function drawOverlay() {
   ctx.fillStyle = "#f0f8ff"; ctx.font = "800 49px system-ui";
   ctx.fillText(state.winner !== null ? winnerText() : !started ? state.mode === "training" ? "Find your flow." : "Make your move." : "Paused", W / 2, 284);
   ctx.fillStyle = "#b1c8db"; ctx.font = "19px system-ui";
-  ctx.fillText(state.winner !== null ? "Rematch below" : !started ? "Play below · Light / Strong / Special" : "Resume below or press P", W / 2, 324);
+  ctx.fillText(state.winner !== null ? "Rematch below" : !started ? state.mode === "training" ? "Start practice below · No stocks to lose" : state.mode === "versus" ? "Share a keyboard · Play 2P below" : "Play CPU or learn with First steps below" : "Resume below or press P", W / 2, 324);
 }
 
 function draw() {
@@ -451,6 +476,11 @@ soundBtn.addEventListener("click", () => {
 motionToggle.addEventListener("change", () => { motionOverridden = true; reducedMotion = motionToggle.checked; });
 motionPreference.addEventListener?.("change", event => { if (!motionOverridden) { reducedMotion = event.matches; motionToggle.checked = reducedMotion; } });
 resetBtn.addEventListener("click", () => resetMatch(true));
+learnBtn.addEventListener("click", () => {
+  modeSelect.value = "training";
+  practiceSelect.value = "basics";
+  resetMatch(true);
+});
 pauseBtn.addEventListener("click", playPause);
 modeSelect.addEventListener("change", () => resetMatch());
 stageSelect.addEventListener("change", () => resetMatch());
