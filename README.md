@@ -83,6 +83,14 @@ Changing Focus waits for **Start practice**, so you can read the goal before mov
 practice goal visible; Retry also clears old held inputs and resets the attempt's
 best chain. Full reference stays under **Info & moves**.
 
+Completing a goal shows **Goal met** and an optional next action: First steps →
+Combos → Left edge → Right edge → Easy CPU. First steps requires all six existing
+actions, Combos requires a two-hit chain before the target can escape, and each
+edge requires a successful landing. The next goal waits ready with its Start
+button focused and preserves your stage. You can keep practicing after success;
+Retry or changing setup starts a fresh goal. The Focus menu remains available
+for choosing drills directly.
+
 CPU difficulty changes observation delay and decision mistakes, never damage or
 movement stats. It uses the same attacks and recovery limits. Sound is opt-in;
 reduced motion disables screen shake and reduces visual effects.
@@ -119,3 +127,5 @@ The [October quality record](docs/PROJECT-QUALITY-2026-10-06.md) includes the
 focused browser and regression evidence for practice.
 The [interface refinement record](docs/PROJECT-UX-2026-10-07.md) covers direct
 First steps entry, match states, resource-aware hints and focus behavior.
+The [practice-route record](docs/PROJECT-UX-FLOW-2026-10-07.md) records the
+completion-aware route through existing drills and its acceptance boundaries.

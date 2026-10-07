@@ -35,6 +35,7 @@ const STEP_MS = 1000 / 60;
 let state = PlatformFighter.createGame({ mode: modeSelect.value, stage: stageSelect.value, practiceFocus: practiceSelect.value });
 let paused = true;
 let started = false;
+let practiceMilestoneReached = false;
 let previousFrame = null;
 let accumulatedTime = 0;
 let reducedMotion = motionPreference.matches;
@@ -88,6 +89,25 @@ function readyMessage() {
   return state.mode === "versus" ? "Share a keyboard. P1: WASD + Space / F G H R. P2: arrows + Enter / J K L / right Shift." : "Build damage, then launch your rival offstage. First steps teaches the moves.";
 }
 
+function practiceGoalMet() {
+  if (state.mode !== "training") return false;
+  if (state.practiceFocus === "basics") return state.practiceStep >= 6;
+  if (state.practiceFocus === "combos") return state.practiceBest >= 2;
+  return state.practiceComplete;
+}
+
+function nextPracticeGoal() {
+  return ({ basics: { focus: "combos", label: "Next: Combos", done: "First steps complete" },
+    combos: { focus: "recoveryLeft", label: "Next: Left edge", done: "Two-hit combo landed" },
+    recoveryLeft: { focus: "recoveryRight", label: "Next: Right edge", done: "Left edge recovered" },
+    recoveryRight: { focus: null, label: "Next: Easy CPU", done: "Right edge recovered" } })[state.practiceFocus];
+}
+
+function practiceGuidance() {
+  const next = nextPracticeGoal();
+  return practiceMilestoneReached && state.practiceFocus === "basics" ? `${next.done}. Keep practicing, or choose ${next.label}.` : state.practiceText;
+}
+
 function playHint() {
   const fighter = state.fighters[0], floor = state.platforms.find(platform => platform.solid);
   // Only offer a return route when the body has actually left the main stage.
@@ -98,19 +118,21 @@ function playHint() {
     if (fighter.recoveryUsed) return `Recovery used. Keep steering ${direction} to land and refill your moves.`;
     return `Offstage: steer ${direction}. ${fighter.jumps > 0 ? "Jump, then " : ""}Up + Special to rise.`;
   }
-  if (state.mode === "training") return state.practiceText || "Practice freely. Stocks are unlimited.";
+  if (state.mode === "training") return practiceGuidance() || "Practice freely. Stocks are unlimited.";
   return "Light connects. Hold a direction to change the move; charge Strong to finish.";
 }
 
 function syncMatchControls() {
   const finished = state.winner !== null;
-  matchState.textContent = finished ? "Complete" : !started ? "Ready" : paused ? "Paused" : state.mode === "training" ? "Practice" : "Playing";
+  matchState.textContent = finished ? "Complete" : !started ? "Ready" : paused ? "Paused" : state.mode === "training" ? practiceMilestoneReached ? "Goal met" : "Practice" : "Playing";
   pauseBtn.textContent = finished ? "Finished" : !started ? state.mode === "training" ? "Start practice" : state.mode === "cpu" ? "Play CPU" : "Play 2P" : paused ? "Resume" : "Pause";
   pauseBtn.disabled = finished;
   pauseBtn.setAttribute("aria-pressed", String(started && paused && !finished));
   resetBtn.textContent = finished ? "Rematch" : state.mode === "training" ? "Retry" : "Restart";
   resetBtn.hidden = !started;
-  learnBtn.hidden = started || state.mode !== "cpu";
+  const nextGoalAvailable = state.mode === "training" && practiceMilestoneReached;
+  learnBtn.hidden = !nextGoalAvailable && (started || state.mode !== "cpu");
+  learnBtn.textContent = nextGoalAvailable ? nextPracticeGoal().label : "First steps";
 }
 
 function setPaused(value) {
@@ -118,7 +140,7 @@ function setPaused(value) {
   paused = value; clearInput(); previousFrame = null; accumulatedTime = 0;
   syncMatchControls();
   if (started) {
-    if (state.mode === "training") announce(`${paused ? "Paused. " : ""}${state.practiceText}`);
+    if (state.mode === "training") announce(`${paused ? "Paused. " : ""}${practiceGuidance()}`);
     else announce(paused ? "Paused. Resume keeps this round; Restart begins a new one." : playHint());
   }
 }
@@ -133,6 +155,7 @@ function resetMatch(play = false) {
   clearInput();
   state = PlatformFighter.createGame({ mode: modeSelect.value, stage: stageSelect.value, practiceFocus: practiceSelect.value });
   started = false;
+  practiceMilestoneReached = false;
   difficultyControl.hidden = state.mode !== "cpu"; touchControls.hidden = state.mode === "versus";
   practiceControl.hidden = state.mode !== "training";
   setPaused(true); announce(readyMessage());
@@ -149,6 +172,10 @@ function update() {
     if (frames <= 1) touchPulses.delete(action); else touchPulses.set(action, frames - 1);
   }
   syncTouchButtons(); playEvents(state.events || []);
+  if (!practiceMilestoneReached && practiceGoalMet()) {
+    practiceMilestoneReached = true;
+    syncMatchControls();
+  }
   if (state.winner !== null) {
     clearInput(); paused = true; accumulatedTime = 0;
     syncMatchControls();
@@ -486,6 +513,15 @@ motionToggle.addEventListener("change", () => { motionOverridden = true; reduced
 motionPreference.addEventListener?.("change", event => { if (!motionOverridden) { reducedMotion = event.matches; motionToggle.checked = reducedMotion; } });
 resetBtn.addEventListener("click", () => resetMatch(true));
 learnBtn.addEventListener("click", () => {
+  if (state.mode === "training") {
+    if (!practiceMilestoneReached) return;
+    const next = nextPracticeGoal();
+    if (next.focus) practiceSelect.value = next.focus;
+    else { modeSelect.value = "cpu"; difficultySelect.value = "easy"; }
+    resetMatch();
+    pauseBtn.focus({ preventScroll: true });
+    return;
+  }
   modeSelect.value = "training";
   practiceSelect.value = "basics";
   resetMatch(true);

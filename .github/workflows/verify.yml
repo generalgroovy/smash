@@ -19,3 +19,12 @@ jobs:
           node --check game.js
       - name: Combat, CPU and integration regressions
         run: node --test tests/*.test.cjs
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - name: Practice route in a composed browser
+        run: node tests/browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fighter-practice-route
+          path: test-results/
