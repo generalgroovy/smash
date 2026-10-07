@@ -79,3 +79,16 @@ test('context hints do not capture focus and native controls keep game shortcuts
   assert.equal(app.elements.get('matchState').textContent, 'Paused');
   assert.match(app.elements.get('matchStatus').textContent, /Paused/);
 });
+
+test('audio failure stays beside Sound while simulation and practice hints keep updating', async () => {
+  for (const window of [{}, { AudioContext: class { resume() { return Promise.reject(new Error('blocked')); } } }]) {
+    const app = setup({ mode: 'cpu', window }); app.start(); app.click('soundBtn');
+    await Promise.resolve();
+    assert.equal(app.elements.get('soundStatus').hidden, false);
+    assert.match(app.elements.get('soundStatus').textContent, /Audio unavailable/);
+    app.step(10);
+    assert.match(app.elements.get('matchStatus').textContent, /Light connects/);
+    assert.match(app.elements.get('soundStatus').textContent, /Audio unavailable/);
+    assert.equal(app.elements.get('soundBtn').attributes['aria-pressed'], 'false');
+  }
+});

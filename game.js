@@ -14,6 +14,7 @@ const practiceControl = document.getElementById("practiceControl");
 const practiceSelect = document.getElementById("practiceSelect");
 const matchStatus = document.getElementById("matchStatus");
 const soundBtn = document.getElementById("soundBtn");
+const soundStatus = document.getElementById("soundStatus");
 const motionToggle = document.getElementById("motionToggle");
 const touchControls = document.getElementById("touchControls");
 const touchButtons = [...document.querySelectorAll("[data-action]")];
@@ -439,7 +440,13 @@ for (const button of touchButtons) {
 
 function resumeAudio() {
   if (!soundEnabled || !audioContext) return;
-  const result = audioContext.resume(); if (result?.catch) result.catch(() => { soundEnabled = false; updateSoundLabel(); });
+  const result = audioContext.resume(); if (result?.catch) result.catch(reportSoundFailure);
+}
+function reportSoundFailure() {
+  soundEnabled = false;
+  soundStatus.textContent = "Audio unavailable. Try enabling sound again.";
+  soundStatus.hidden = false;
+  updateSoundLabel();
 }
 function updateSoundLabel() {
   soundBtn.textContent = soundEnabled ? "Sound on" : "Sound off"; soundBtn.setAttribute("aria-pressed", String(soundEnabled));
@@ -460,12 +467,14 @@ function playEvents(events) {
 }
 soundBtn.addEventListener("click", () => {
   soundEnabled = !soundEnabled;
+  soundStatus.textContent = "";
+  soundStatus.hidden = true;
   if (soundEnabled) {
     const AudioAPI = window.AudioContext || window.webkitAudioContext;
-    if (!AudioAPI) { soundEnabled = false; announce("Game sound is unavailable in this browser."); }
+    if (!AudioAPI) reportSoundFailure();
     else {
       try { audioContext ||= new AudioAPI(); resumeAudio(); }
-      catch { soundEnabled = false; announce("Game sound is unavailable in this browser."); }
+      catch { reportSoundFailure(); }
     }
   } else {
     // Stop current notes rather than freezing them for playback on the next unmute.

@@ -6,13 +6,13 @@
   <meta name="theme-color" content="#0b1120" />
   <meta name="description" content="A fast platform fighter: directional strikes, charged finishers, parries and aerial recoveries. Play against the CPU, a friend, or a practice dummy." />
   <title>Platform Fighter</title>
-  <link rel="stylesheet" href="style.css?v=77e1bb1f513d" />
+  <link rel="stylesheet" href="style.css?v=c14037418e3d" />
 </head>
 <body>
   <main>
     <header class="masthead">
       <div><span class="eyebrow">LOCAL ARCADE</span><h1>Platform Fighter<span class="title-dot">.</span></h1></div>
-      <button id="soundBtn" class="quiet" aria-pressed="false" aria-label="Enable synthesized game sound">Sound off</button>
+      <div class="sound-control"><button id="soundBtn" class="quiet" aria-pressed="false" aria-label="Enable synthesized game sound" aria-describedby="soundStatus">Sound off</button><span id="soundStatus" role="status" hidden></span></div>
     </header>
     <section class="arena" aria-label="Game">
       <canvas id="game" width="960" height="540" tabindex="0" aria-label="Platform fighter arena" aria-describedby="quickControls matchStatus"></canvas>
@@ -62,6 +62,6 @@
   </main>
   <script src="combat.js?v=a0935cc67ed2"></script>
   <script src="cpu.js?v=dfff5fea886f"></script>
-  <script src="game.js?v=a9fca42145f9"></script>
+  <script src="game.js?v=c48a540965d9"></script>
 </body>
 </html>

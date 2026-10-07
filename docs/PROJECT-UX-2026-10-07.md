@@ -32,18 +32,23 @@ make those choices explicit without adding another instructions panel.
 
 - Base: `7bdc88fc10e1ff8825f097b7a6f80b824f1340b4` (latest main, including the
   engineering overview and portfolio navigation documentation).
-- `node --test tests/*.test.cjs`: 64 passing tests, including four new integration
+- `node --test tests/*.test.cjs`: 65 passing tests, including five new integration
   regressions for direct practice entry/stage preservation, match-state and
   native-focus transitions, both recovery sides and spent resources, and native
-  keyboard controls during contextual hints. The existing 60 tests cover combat,
+  keyboard controls during contextual hints, and persistent audio-failure feedback.
+  The existing 60 tests cover combat,
   CPU, drills, input, pause, touch cancellation, sound, rendering and asset hashes.
 - `node --check game.js` and `git diff --check` pass. Runtime asset revisions were
   refreshed with `node tools/update-asset-revisions.cjs`.
 - Candidate runtime `f4dcd1f946e614ea4d25c062529ab57fd7c4bc25` passes
   [GitHub verification](https://github.com/generalgroovy/smash/actions/runs/37603296451):
   script syntax and all 64 behavior/asset checks on Node 22.
-- Root browser checks and independent review: pending integration; this record
-  will be updated with actual results before publication.
+- Independent reviewer ux_arena found a P2: the new per-frame contextual hint
+  replaced an unsupported-audio error immediately. Audio errors now have a small
+  dedicated live status beside Sound, shown only on failure and retained until
+  another sound attempt. A regression covers both absent Web Audio and a rejected
+  asynchronous resume, with gameplay continuing and its hint changing. Follow-up
+  CI and root browser checks remain pending integration.
 
 ## Limits
 

@@ -3,6 +3,8 @@
 body { margin: 0; min-width: 300px; min-height: 100vh; background: radial-gradient(ellipse at 50% 0%, #182641, #0b1120 72%); }
 main { width: min(100%, 1056px); margin: auto; padding: 22px 28px 32px; }
 .masthead { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 17px; }
+.sound-control { display: grid; justify-items: end; gap: 5px; max-width: 180px; }
+#soundStatus { font-size: 11px; line-height: 1.4; color: #ffd783; text-align: right; }
 .eyebrow { font-size: 10px; font-weight: 750; letter-spacing: .25em; color: var(--muted); }
 h1 { font-size: clamp(24px, 4vw, 34px); line-height: 1.12; letter-spacing: -.055em; margin: 4px 0 0; font-weight: 850; }
 .title-dot { color: var(--mint); }
