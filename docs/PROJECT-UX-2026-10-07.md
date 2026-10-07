@@ -59,7 +59,15 @@ make those choices explicit without adding another instructions panel.
   found setup, Resume and touch controls below the arena viewport. A follow-up
   short-landscape grid puts the arena beside setup, status and the touch pad;
   Info stays reachable below. Reviewer ux_arena inspected this CSS/hash-only
-  follow-up with no source blocker. Final rendered bounds verification pending.
+  follow-up with no source blocker. Root accepted runtime
+  `78588aa2c3813bb931b2278aac81838d05ba72e3` at 844 × 420: arena bottom 357 px,
+  touch-pad bottom 358 px, and Pause/Resume bottom 186 px, all visible together.
+  Native Mode Home/ArrowDown/End retained focus; play focuses the arena and the
+  visible Pause/Resume control remains usable. [Landscape screenshot](evidence/ux-2026-10-07/fighter-after-landscape.png).
+- [Final runtime CI](https://github.com/generalgroovy/smash/actions/runs/37605167218)
+  passes all 65 tests at `78588aa2`. This documentation/evidence update does not
+  change runtime. Source review and root rendered checks are complete; parent
+  owns main promotion and public-byte verification.
 
 ## Limits
 
