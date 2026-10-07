@@ -47,8 +47,12 @@ make those choices explicit without adding another instructions panel.
   replaced an unsupported-audio error immediately. Audio errors now have a small
   dedicated live status beside Sound, shown only on failure and retained until
   another sound attempt. A regression covers both absent Web Audio and a rejected
-  asynchronous resume, with gameplay continuing and its hint changing. Follow-up
-  CI and root browser checks remain pending integration.
+  asynchronous resume, with gameplay continuing and its hint changing. Reviewer
+  reran six focused UX/asset checks and closed the finding at runtime
+  `13c08e838c6c85963ca0dce9a95b6288eddbe609` with no open source blockers.
+- [Follow-up CI](https://github.com/generalgroovy/smash/actions/runs/37604054680)
+  passes syntax and all 65 tests for that corrected runtime. Root rendered
+  browser checks remain a separate integration gate.
 
 ## Limits
 
