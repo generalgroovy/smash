@@ -67,9 +67,13 @@ h2 { font-size: 14px; color: #e1ebfa; margin: 8px 0; }
   .touch-controls { gap: 8px; }.direction-pad { grid-template: repeat(3, 44px) / repeat(3, 44px); gap: 2px; }
   .action-pad { grid-template-columns: repeat(3, minmax(45px, 1fr)); gap: 5px; flex: 1; max-width: 200px; }.info-columns { grid-template-columns: 1fr; gap: 0; }.move-table th, .move-table td { padding: 8px 5px; font-size: 11px; }
 }
-@media (max-width: 350px) { .action-pad { gap: 3px; grid-template-columns: repeat(3, minmax(41px, 1fr)); }.action-pad button { font-size: 10px; }.touch-controls { gap: 5px; } }
+@media (max-width: 350px) {
+  .setup { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .setup label:nth-child(n+3) { grid-column: 1 / -1; }
+  .action-pad { gap: 3px; grid-template-columns: repeat(3, minmax(41px, 1fr)); }.action-pad button { font-size: 10px; }.touch-controls { gap: 5px; }
+}
 @media (min-width: 701px) and (max-height: 520px) {
-  main { display: grid; grid-template-columns: minmax(0, 1fr) 286px; gap: 8px 12px; padding: 10px 12px 16px; }
+  main { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 8px 12px; padding: 10px 12px 16px; }
   .masthead { grid-column: 1 / -1; margin: 0; }.masthead h1 { font-size: 26px; }.eyebrow { font-size: 9px; }
   .sound-control { display: flex; align-items: center; gap: 8px; max-width: 340px; }.sound-control button { flex-shrink: 0; }#soundStatus { max-width: 190px; }
   .arena { grid-column: 1; grid-row: 2 / 5; width: 100%; max-width: min(100%, calc((100dvh - 84px) * 16 / 9)); align-self: start; }
