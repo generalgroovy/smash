@@ -4,8 +4,8 @@
 
 Build damage, open a combo and launch your rival beyond the arena. Take three
 stocks to win. Play against a CPU, share a keyboard with a friend, or learn in
-Practice. Two stages and one shared moveset keep the contest about movement,
-spacing and timing. No installation, account or online session is required.
+Practice. Two stages share directional ground and aerial moves.
+No installation, account or online session is required.
 
 ## Engineering overview
 

@@ -87,7 +87,7 @@ test('audio failure stays beside Sound while simulation and practice hints keep 
     assert.equal(app.elements.get('soundStatus').hidden, false);
     assert.match(app.elements.get('soundStatus').textContent, /Audio unavailable/);
     app.step(10);
-    assert.match(app.elements.get('matchStatus').textContent, /Light connects/);
+    assert.match(app.elements.get('matchStatus').textContent, /Light attacks quickly/);
     assert.match(app.elements.get('soundStatus').textContent, /Audio unavailable/);
     assert.equal(app.elements.get('soundBtn').attributes['aria-pressed'], 'false');
   }

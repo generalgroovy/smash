@@ -119,7 +119,7 @@ function playHint() {
     return `Offstage: steer ${direction}. ${fighter.jumps > 0 ? "Jump, then " : ""}Up + Special to rise.`;
   }
   if (state.mode === "training") return practiceGuidance() || "Practice freely. Stocks are unlimited.";
-  return "Light connects. Hold a direction to change the move; charge Strong to finish.";
+  return "Light attacks quickly. Hold a direction to change the move; charge Strong to launch.";
 }
 
 function syncMatchControls() {
@@ -388,9 +388,9 @@ function drawOverlay() {
   if (!paused && state.winner === null) return;
   ctx.fillStyle = "#061120a8"; ctx.fillRect(0, 108, W, H - 108); ctx.textAlign = "center";
   ctx.fillStyle = "#91f0d9"; ctx.font = "bold 13px system-ui";
-  ctx.fillText(state.winner !== null ? "MATCH COMPLETE" : !started ? "READY WHEN YOU ARE" : "TAKE A BREATHER", W / 2, 225);
+  ctx.fillText(state.winner !== null ? "MATCH COMPLETE" : !started ? "READY" : "PAUSED", W / 2, 225);
   ctx.fillStyle = "#f0f8ff"; ctx.font = "800 49px system-ui";
-  ctx.fillText(state.winner !== null ? winnerText() : !started ? state.mode === "training" ? "Find your flow." : "Make your move." : "Paused", W / 2, 284);
+  ctx.fillText(state.winner !== null ? winnerText() : !started ? state.mode === "training" ? "Unlimited stocks" : "Take three stocks to win" : "", W / 2, 284);
   ctx.fillStyle = "#b1c8db"; ctx.font = "19px system-ui";
   ctx.fillText(state.winner !== null ? "Rematch below" : !started ? state.mode === "training" ? "Start practice below · No stocks to lose" : state.mode === "versus" ? "Share a keyboard · Play 2P below" : "Play CPU or learn with First steps below" : "Resume below or press P", W / 2, 324);
 }
